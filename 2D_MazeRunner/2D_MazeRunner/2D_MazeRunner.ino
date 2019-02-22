@@ -4,20 +4,9 @@
  Author:	kokob
 */
 
-#pragma region Definitions
+#include "DebugPort.h"
+#include "ApplicationConfiguration.h"
 
-#define S1 8
-#define S2 9
-#define S3 10
-#define S4 11
-#define S5 12
-#define S6 13
-#define S7 14
-#define S8 15 
-#define SENSORS_COUNT 8
-#define AVERAGE_FILTER_COUNT 5
-#define SERIAL_SPEED 115200
-#pragma endregion
 
 #pragma region Constants
 
@@ -55,7 +44,7 @@ uint16_t max_calibration_sensor_value(int sensorIndex);
 
 void setup()
 {
-	Serial.begin(SERIAL_SPEED);
+	configure_debug_port();
 }
 
 void loop()
@@ -104,10 +93,9 @@ void display_average_data()
 {
 	for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
 	{
-		Serial.print(AvgSensorValues_g[SensorIndex]);
-		Serial.print(", ");
+		DEBUGLOG("%d, ", AvgSensorValues_g[SensorIndex]);
 	}
-	Serial.println();
+	DEBUGLOG("\r\n");
 }
 
 void fill_calibration_data(int rowIndex)
