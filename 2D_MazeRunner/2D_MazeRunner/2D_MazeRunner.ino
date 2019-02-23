@@ -4,33 +4,35 @@
  Author:	kokob
 */
 
-#include "DebugPort.h"
 #include "ApplicationConfiguration.h"
+
+#include "DebugPort.h"
 
 
 #pragma region Constants
 
-const uint8_t AnalogPins_g[SENSORS_COUNT] = { S1, S2, S3, S4, S5, S6, S7, S8 };
+const uint8_t AnalogPins_g[SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7, PIN_LS_8 };
 
 #pragma endregion
 
 #pragma region Variables
 
-uint16_t SensorValues_g[SENSORS_COUNT][AVERAGE_FILTER_COUNT];
-
 uint16_t AvgSensorValues_g[SENSORS_COUNT];
 
-uint16_t CalibrationSensorValues_g[SENSORS_COUNT][20];
+uint16_t CalibrationSensorValues_g[SENSORS_COUNT][CALIBRATION_SIZE];
+
+uint16_t MinSensorValues_g[SENSORS_COUNT];
+
+uint16_t MaxSensorValues_g[SENSORS_COUNT];
+
+uint16_t SensorValues_g[SENSORS_COUNT];
 
 #pragma endregion
 
 #pragma region Prototypes Functions
 
-void clear_avg_values();
 
-void fill_senzor_data();
-
-void proces_sensor_data();
+void read_line_sensor();
 
 void display_average_data();
 
@@ -42,49 +44,107 @@ uint16_t max_calibration_sensor_value(int sensorIndex);
 
 #pragma endregion
 
+int calibration_flag = 0;
+
+enum AppplicationState : uint8_t
+{
+	GetCalibrationData = 1U,
+	CalculateMinMax,
+	DisplayData,
+};
+
+uint8_t State = AppplicationState::GetCalibrationData;
+
 void setup()
 {
 	configure_debug_port();
+	pinMode(PIN_USER_LED, OUTPUT);
+	digitalWrite(PIN_USER_LED, LOW);
+	Serial.println("Stater...");
 }
 
 void loop()
 {
-	fill_senzor_data();
-	proces_sensor_data();
-	display_average_data();
-	delay(100);
+	if (State == AppplicationState::GetCalibrationData)
+	{
+		digitalWrite(PIN_USER_LED, HIGH);
+		read_line_sensor();
+		display_average_data();
+		fill_calibration_data(calibration_flag);
+		digitalWrite(PIN_USER_LED, LOW);
+		calibration_flag++;
+		if (calibration_flag >= CALIBRATION_SIZE)
+		{
+			State = AppplicationState::CalculateMinMax;
+		}
+	}
+	else if (State == AppplicationState::CalculateMinMax)
+	{
+		Serial.println();
+		Serial.print("Minimum: ");
+		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
+		{
+			MinSensorValues_g[SensorIndex] = min_calibration_sensor_value(SensorIndex);
+			Serial.print(MinSensorValues_g[SensorIndex]);
+			Serial.print(", ");
+		}
+		Serial.println();
+		Serial.print("Maximum: ");
+		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
+		{
+			MaxSensorValues_g[SensorIndex] = max_calibration_sensor_value(SensorIndex);
+			Serial.print(MaxSensorValues_g[SensorIndex]);
+			Serial.print(", ");
+		}
+		Serial.println();
+		State = AppplicationState::DisplayData;
+	}
+	else if (State == AppplicationState::DisplayData)
+	{
+		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
+		{
+			read_line_sensor();
+			int MaxValueL = max(AvgSensorValues_g[SensorIndex], MaxSensorValues_g[SensorIndex]);
+			int MinValueL = min(AvgSensorValues_g[SensorIndex], MinSensorValues_g[SensorIndex]);
+			SensorValues_g[SensorIndex] = map(AvgSensorValues_g[SensorIndex], MinValueL, MaxValueL, 0, 100);
+
+			Serial.print(SensorValues_g[SensorIndex]);
+			Serial.print(", ");
+		}
+		Serial.println();
+
+		int NumeratorL = 0;
+		int DenominatorL = 0;
+		float ResultL = 0.0;
+		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
+		{
+			NumeratorL += ((SensorIndex * SENSOR_COEFFICIENT) * SensorValues_g[SensorIndex]);
+			DenominatorL += SensorValues_g[SensorIndex];
+		}
+
+		ResultL = NumeratorL / DenominatorL;
+
+		Serial.println();
+		Serial.print("Position: ");
+		Serial.println(ResultL);
+	}
+
+	delay(1000);
 }
 
 #pragma region Functions
 
-void clear_avg_values()
+void read_line_sensor()
 {
 	for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
 	{
-		AvgSensorValues_g[SensorIndex] = 0 ;
-	}
-}
+		AvgSensorValues_g[SensorIndex] = 0;
 
-void fill_senzor_data()
-{
-	for (int RowIndex = 0; RowIndex < AVERAGE_FILTER_COUNT; RowIndex++)
-	{
-		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-		{
-			SensorValues_g[SensorIndex][RowIndex] = analogRead(AnalogPins_g[SensorIndex]);
-			delay(1);
-		}
-	}
-}
-
-void proces_sensor_data()
-{
-	for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-	{
 		for (int RowIndex = 0; RowIndex < AVERAGE_FILTER_COUNT; RowIndex++)
 		{
-			AvgSensorValues_g[SensorIndex] += SensorValues_g[SensorIndex][RowIndex];
+			AvgSensorValues_g[SensorIndex] += analogRead(AnalogPins_g[SensorIndex]);
 		}
+
 		AvgSensorValues_g[SensorIndex] /= AVERAGE_FILTER_COUNT;
 	}
 }
@@ -93,9 +153,10 @@ void display_average_data()
 {
 	for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
 	{
-		DEBUGLOG("%d, ", AvgSensorValues_g[SensorIndex]);
+		Serial.print(AvgSensorValues_g[SensorIndex]);
+		Serial.print(", ");
 	}
-	DEBUGLOG("\r\n");
+	Serial.println();
 }
 
 void fill_calibration_data(int rowIndex)

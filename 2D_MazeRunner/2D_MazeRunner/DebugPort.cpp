@@ -34,7 +34,7 @@ void configure_debug_port()
 
 	DEBUG_PORT.begin(DEBUG_PORT_BAUDRATE, SERIAL_8N1);
 	DEBUG_PORT.print("\r\n\r\n\r\n");
-	DEBUG_PORT.setDebugOutput(true);
+	//DEBUG_PORT.setDebugOutput(true);
 
 	DEBUGLOG("\r\n");
 	DEBUGLOG(__PRETTY_FUNCTION__);

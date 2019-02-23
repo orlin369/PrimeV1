@@ -24,9 +24,12 @@
     <ClInclude Include="ApplicationConfiguration.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DebugPort.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ApplicationConfiguration.cpp">
+    <ClCompile Include="DebugPort.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
