@@ -4,10 +4,18 @@
  Author:	kokob
 */
 
+#pragma region Headers
+
 #include "ApplicationConfiguration.h"
 
 #include "DebugPort.h"
 
+#include "AppplicationState.h"
+
+// Include the TimerOne Library from Paul Stoffregen
+#include "TimerOne.h"
+
+#pragma endregion
 
 #pragma region Constants
 
@@ -27,10 +35,20 @@ uint16_t MaxSensorValues_g[SENSORS_COUNT];
 
 uint16_t SensorValues_g[SENSORS_COUNT];
 
+int calibration_flag = 0;
+
+uint8_t State = AppplicationState::GetCalibrationData;
+
+// Integers for pulse counters
+volatile unsigned int CounterLeft_g = 0;
+volatile unsigned int CounterRight_g = 0;
+
+volatile float RPMLeft_g = 0;
+volatile float RPMRight_g = 0;
+
 #pragma endregion
 
 #pragma region Prototypes Functions
-
 
 void read_line_sensor();
 
@@ -42,19 +60,16 @@ uint16_t min_calibration_sensor_value(int sensorIndex);
 
 uint16_t max_calibration_sensor_value(int sensorIndex);
 
+// Motor 1 pulse count ISR
+void ISR_Left_Encoder();
+
+// Motor 2 pulse count ISR
+void ISR_Right_Encoder();
+
+// TimerOne ISR
+void ISR_timerone();
+
 #pragma endregion
-
-int calibration_flag = 0;
-
-enum AppplicationState : uint8_t
-{
-	GetCalibrationData = 1U,
-	CalculateMinMax,
-	DisplayData,
-	MotorControll,
-};
-
-uint8_t State = AppplicationState::GetCalibrationData;
 
 void setup()
 {
@@ -65,6 +80,11 @@ void setup()
 
 	digitalWrite(PIN_USER_LED, LOW);
 	digitalWrite(PIN_USER_BUZZER, LOW);
+
+	Timer1.initialize(TIMER1_DELAY); // set timer for 1sec
+	attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), ISR_Left_Encoder, RISING);  // Increase counter 1 when speed sensor pin goes High
+	attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), ISR_Right_Encoder, RISING);  // Increase counter 2 when speed sensor pin goes High
+	Timer1.attachInterrupt(ISR_timerone); // Enable the timer
 
 	Serial.println("Stated...");
 }
@@ -107,20 +127,20 @@ void loop()
 	}
 	else if (State == AppplicationState::DisplayData)
 	{
-		Serial.println("RAW");
+		//Serial.println("RAW");
 		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
 		{
 			read_line_sensor();
 			int MaxValueL = max(AvgSensorValues_g[SensorIndex], MaxSensorValues_g[SensorIndex]);
 			int MinValueL = min(AvgSensorValues_g[SensorIndex], MinSensorValues_g[SensorIndex]);
-			SensorValues_g[SensorIndex] = map(AvgSensorValues_g[SensorIndex], MinValueL, MaxValueL, 0, 100);
+			SensorValues_g[SensorIndex] = map(AvgSensorValues_g[SensorIndex], MinValueL, MaxValueL, 0, SENSOR_COEFFICIENT);
 
 			//Serial.print(SensorValues_g[SensorIndex]);
 			//Serial.print(", ");
 		}
 		//Serial.println();
 
-		int min = 1023;
+		int min = SENSOR_COEFFICIENT;
 		int max = 0;
 
 		Serial.println("Line");
@@ -138,7 +158,7 @@ void loop()
 
 		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
 		{
-			SensorValues_g[SensorIndex] = map(SensorValues_g[SensorIndex], min, max, 0, 100);
+			SensorValues_g[SensorIndex] = map(SensorValues_g[SensorIndex], min, max, 0, SENSOR_COEFFICIENT);
 
 			Serial.print(SensorValues_g[SensorIndex]);
 			Serial.print(", ");
@@ -222,6 +242,38 @@ uint16_t max_calibration_sensor_value(int sensorIndex)
 		}
 	}
 	return max;
+}
+
+// Motor 1 pulse count ISR
+void ISR_Left_Encoder()
+{
+	CounterLeft_g++;  // increment Motor 1 counter value
+}
+
+// Motor 2 pulse count ISR
+void ISR_Right_Encoder()
+{
+	CounterRight_g++;  // increment Motor 2 counter value
+}
+
+// TimerOne ISR
+void ISR_timerone()
+{
+	Timer1.detachInterrupt();  // Stop the timer
+
+	Serial.print("Motor Speed Left: ");
+	RPMLeft_g = (CounterLeft_g / ENCODER_TRACKS) * 60.00;  // calculate RPM for Motor 1
+	Serial.print(RPMLeft_g);
+	Serial.print(" RPM - ");
+	CounterLeft_g = 0;  //  reset counter to zero
+
+	Serial.print("Motor Speed Right: ");
+	RPMRight_g = (CounterRight_g / ENCODER_TRACKS) * 60.00;  // calculate RPM for Motor 2
+	Serial.print(RPMRight_g);
+	Serial.println(" RPM");
+	CounterRight_g = 0;  //  reset counter to zero
+
+	Timer1.attachInterrupt(ISR_timerone);  // Enable the timer
 }
 
 #pragma endregion
