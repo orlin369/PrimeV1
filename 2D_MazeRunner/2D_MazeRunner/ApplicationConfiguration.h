@@ -39,6 +39,8 @@
 
 #define PIN_RIGHT_DIRECTION 6
 
+#define PIN_USER_BUZZER 8
+
 #define PIN_USER_LED 13
 
 #pragma endregion

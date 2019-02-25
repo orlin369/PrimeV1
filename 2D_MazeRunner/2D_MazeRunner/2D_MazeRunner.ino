@@ -51,6 +51,7 @@ enum AppplicationState : uint8_t
 	GetCalibrationData = 1U,
 	CalculateMinMax,
 	DisplayData,
+	MotorControll,
 };
 
 uint8_t State = AppplicationState::GetCalibrationData;
@@ -58,9 +59,14 @@ uint8_t State = AppplicationState::GetCalibrationData;
 void setup()
 {
 	configure_debug_port();
+
 	pinMode(PIN_USER_LED, OUTPUT);
+	pinMode(PIN_USER_BUZZER, OUTPUT);
+
 	digitalWrite(PIN_USER_LED, LOW);
-	Serial.println("Stater...");
+	digitalWrite(PIN_USER_BUZZER, LOW);
+
+	Serial.println("Stated...");
 }
 
 void loop()
@@ -101,6 +107,7 @@ void loop()
 	}
 	else if (State == AppplicationState::DisplayData)
 	{
+		Serial.println("RAW");
 		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
 		{
 			read_line_sensor();
@@ -108,10 +115,34 @@ void loop()
 			int MinValueL = min(AvgSensorValues_g[SensorIndex], MinSensorValues_g[SensorIndex]);
 			SensorValues_g[SensorIndex] = map(AvgSensorValues_g[SensorIndex], MinValueL, MaxValueL, 0, 100);
 
+			//Serial.print(SensorValues_g[SensorIndex]);
+			//Serial.print(", ");
+		}
+		//Serial.println();
+
+		int min = 1023;
+		int max = 0;
+
+		Serial.println("Line");
+		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
+		{
+			if (SensorValues_g[SensorIndex] < min)
+			{
+				min = SensorValues_g[SensorIndex];
+			}
+			if (SensorValues_g[SensorIndex] > max)
+			{
+				max = SensorValues_g[SensorIndex];
+			}
+		}
+
+		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
+		{
+			SensorValues_g[SensorIndex] = map(SensorValues_g[SensorIndex], min, max, 0, 100);
+
 			Serial.print(SensorValues_g[SensorIndex]);
 			Serial.print(", ");
 		}
-		Serial.println();
 
 		int NumeratorL = 0;
 		int DenominatorL = 0;
