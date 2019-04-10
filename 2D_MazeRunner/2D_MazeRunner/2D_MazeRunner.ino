@@ -1,43 +1,77 @@
 /*
- Name:		_2D_MazeRunner.ino
- Created:	1/31/2019 6:11:36 PM
- Author:	kokob
+
+Copyright (c) [2019] [Orlin Dimitrov]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 */
 
 #pragma region Headers
 
-#include "ApplicationConfiguration.h"
-
-#include "DebugPort.h"
-
-#include "AppplicationState.h"
+#include <Servo.h>
 
 // Include the TimerOne Library from Paul Stoffregen
 #include "TimerOne.h"
+
+#include "ApplicationConfiguration.h"
+#include "AppplicationState.h"
+#include "DebugPort.h"
+#include "LineSensor.h"
+#include "HCSR04.h"
+#include "LRData.h"
+#include "XYData.h"
+#include "Sing.h"
+#include "Notes.h"
+#include "MotorDirection.h"
 
 #pragma endregion
 
 #pragma region Constants
 
-const uint8_t AnalogPins_g[SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7, PIN_LS_8 };
+const uint8_t AnalogPins_g[LINE_SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7, PIN_LS_8 };
 
 #pragma endregion
 
 #pragma region Variables
 
-uint16_t AvgSensorValues_g[SENSORS_COUNT];
+bool SaftyFlag_g = false;
 
-uint16_t CalibrationSensorValues_g[SENSORS_COUNT][CALIBRATION_SIZE];
+/* @brief Application state flag. */
+uint8_t AppStateFlag_g = AppplicationState::WaitForCalibration;
 
-uint16_t MinSensorValues_g[SENSORS_COUNT];
+/* @brief The current reading from the input pin. */
+int UserButtonState_g;
 
-uint16_t MaxSensorValues_g[SENSORS_COUNT];
+/* @brief The previous reading from the input pin. */
+int lastButtonState = HIGH;
 
-uint16_t SensorValues_g[SENSORS_COUNT];
+/* @brief The last time the output pin was toggled. */
+unsigned long lastDebounceTime = 0;
 
-int calibration_flag = 0;
+/* @brief Line position value. */
+float LinePosition_g = 0;
 
-uint8_t State = AppplicationState::GetCalibrationData;
+/* @brief Line position value. */
+int USDistance_g = 0;
+
+uint8_t MotorDirectionLeft_g = MotorDirection::CW;
+uint8_t MotorDirectionRight_g = MotorDirection::CW;
 
 // Integers for pulse counters
 volatile unsigned int CounterLeft_g = 0;
@@ -46,214 +80,323 @@ volatile unsigned int CounterRight_g = 0;
 volatile float RPMLeft_g = 0;
 volatile float RPMRight_g = 0;
 
+XYData_t XYDataFromRadio_g;
+LRData_t LRData_g;
+
+/* @brief Ultrasonic servo controller. */
+Servo USServo_g;
+
+/* @brief Ultrasonic servo controller. */
+LineSensorClass QTR8;
+
+/* @brief HC-SR04 ultra sonic sensor. */
+HCSR04Class HCSR04;
+
 #pragma endregion
 
 #pragma region Prototypes Functions
 
-void read_line_sensor();
+void read_button();
 
-void display_average_data();
+/** @brief 
+ *  @param xyData X and Y joystick data.
+ *  @return LRData_t Left and Right PWM transformation.
+ */
+LRData_t xy_to_lr(XYData_t xyData);
 
-void fill_calibration_data(int rowIndex);
-
-uint16_t min_calibration_sensor_value(int sensorIndex);
-
-uint16_t max_calibration_sensor_value(int sensorIndex);
-
-// Motor 1 pulse count ISR
+// Motor Left pulse count ISR
 void ISR_Left_Encoder();
 
-// Motor 2 pulse count ISR
+// Motor Right pulse count ISR
 void ISR_Right_Encoder();
 
 // TimerOne ISR
 void ISR_timerone();
 
+void move_robot(LRData_t lrdata);
+
+uint16_t readSensor(int index);
+
 #pragma endregion
 
+/** @brief The setup function runs once when you press reset or power the board.
+ *  @return Void.
+ */
 void setup()
 {
 	configure_debug_port();
 
+	// Setup the motor driver.
+	pinMode(PIN_LEFT_DIRECTION, OUTPUT);
+	pinMode(PIN_RIGHT_DIRECTION, OUTPUT);
+	pinMode(PIN_LEFT_SPEED, OUTPUT);
+	pinMode(PIN_RIGHT_SPEED, OUTPUT);
+	analogWrite(PIN_LEFT_SPEED, 0);
+	analogWrite(PIN_RIGHT_SPEED, 0);
+
+	// Set line sensor.
+	QTR8.setCbReadSensor(readSensor);
+	QTR8.config(LINE_SENSORS_COUNT, LINE_SENSORS_CALIBRATION_SIZE);
+
+	// Set ultrasonic servo.
+	USServo_g.attach(PIN_US_SERVO);
+	USServo_g.write(90);
+
+	// Set ultrasonic.
+	HCSR04.Config(PIN_US_TRIG, PIN_US_ECHO);
+
+	// Set user interaction.
 	pinMode(PIN_USER_LED, OUTPUT);
-	pinMode(PIN_USER_BUZZER, OUTPUT);
-
 	digitalWrite(PIN_USER_LED, LOW);
-	digitalWrite(PIN_USER_BUZZER, LOW);
+	pinMode(PIN_USER_BUTTON, INPUT_PULLUP);
+	config_sing(PIN_USER_BUZZER);
+	sing(PIN_USER_BUZZER, NOTE_C1, 12);
+	sing(PIN_USER_BUZZER, NOTE_C2, 12);
+	sing(PIN_USER_BUZZER, NOTE_C3, 12);
+	sing(PIN_USER_BUZZER, NOTE_C4, 12);
+	sing(PIN_USER_BUZZER, NOTE_C5, 12);
+	sing(PIN_USER_BUZZER, NOTE_C6, 12);
 
-	Timer1.initialize(TIMER1_DELAY); // set timer for 1sec
-	attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), ISR_Left_Encoder, RISING);  // Increase counter 1 when speed sensor pin goes High
-	attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), ISR_Right_Encoder, RISING);  // Increase counter 2 when speed sensor pin goes High
-	Timer1.attachInterrupt(ISR_timerone); // Enable the timer
+	//attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), ISR_Left_Encoder, RISING);  // Increase counter 1 when speed sensor pin goes High
+	//attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), ISR_Right_Encoder, RISING);  // Increase counter 2 when speed sensor pin goes High
+	//
+	//Timer1.initialize(TIMER1_DELAY); // set timer for 1sec
+	//Timer1.attachInterrupt(ISR_timerone); // Enable the timer
 
 	Serial.println("Stated...");
 }
 
+/** @brief .
+ *  @return Void.
+ */
 void loop()
 {
-	if (State == AppplicationState::GetCalibrationData)
+	read_button();
+
+	if (AppStateFlag_g == AppplicationState::WaitForCalibration)
+	{
+		if (UserButtonState_g == LOW)
+		{
+			UserButtonState_g = HIGH;
+			Serial.println("Bagin calibration.");
+			AppStateFlag_g = AppplicationState::CalibrateSensors;
+
+			sing(PIN_USER_BUZZER, NOTE_C6, 12);
+		}
+	}
+	else if (AppStateFlag_g == AppplicationState::CalibrateSensors)
 	{
 		digitalWrite(PIN_USER_LED, HIGH);
-		read_line_sensor();
-		display_average_data();
-		fill_calibration_data(calibration_flag);
+
+		if (QTR8.calibrate())
+		{
+			sing(PIN_USER_BUZZER, NOTE_C4, 8);
+			AppStateFlag_g = AppplicationState::WaitForStart;
+		}
+		else
+		{
+			sing(PIN_USER_BUZZER, NOTE_C6, 8);
+			delay(1000);
+		}
+
 		digitalWrite(PIN_USER_LED, LOW);
-		calibration_flag++;
-		if (calibration_flag >= CALIBRATION_SIZE)
-		{
-			State = AppplicationState::CalculateMinMax;
-		}
 	}
-	else if (State == AppplicationState::CalculateMinMax)
+	else if (AppStateFlag_g == AppplicationState::WaitForStart)
 	{
-		Serial.println();
-		Serial.print("Minimum: ");
-		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
+		if (UserButtonState_g == LOW)
 		{
-			MinSensorValues_g[SensorIndex] = min_calibration_sensor_value(SensorIndex);
-			Serial.print(MinSensorValues_g[SensorIndex]);
-			Serial.print(", ");
+			Serial.print("Starting");
+			for (uint8_t Index = 0; Index < 3; Index++)
+			{
+				sing(PIN_USER_BUZZER, NOTE_C4, 12);
+				Serial.print('.');
+				delay(1000);
+			}
+			Serial.println();
+			UserButtonState_g = HIGH;
+			AppStateFlag_g = AppplicationState::ReadSensors;
+			sing(PIN_USER_BUZZER, NOTE_C6, 12);
 		}
-		Serial.println();
-		Serial.print("Maximum: ");
-		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-		{
-			MaxSensorValues_g[SensorIndex] = max_calibration_sensor_value(SensorIndex);
-			Serial.print(MaxSensorValues_g[SensorIndex]);
-			Serial.print(", ");
-		}
-		Serial.println();
-		State = AppplicationState::DisplayData;
 	}
-	else if (State == AppplicationState::DisplayData)
+	else if (AppStateFlag_g == AppplicationState::ReadSensors)
 	{
-		//Serial.println("RAW");
-		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-		{
-			read_line_sensor();
-			int MaxValueL = max(AvgSensorValues_g[SensorIndex], MaxSensorValues_g[SensorIndex]);
-			int MinValueL = min(AvgSensorValues_g[SensorIndex], MinSensorValues_g[SensorIndex]);
-			SensorValues_g[SensorIndex] = map(AvgSensorValues_g[SensorIndex], MinValueL, MaxValueL, 0, SENSOR_COEFFICIENT);
+		// 
+		//USDistance_g = HCSR04.ReadCM();
+				
+		//TODO: Get Road conditions.
+		LinePosition_g = QTR8.readLinePosition();
 
-			//Serial.print(SensorValues_g[SensorIndex]);
-			//Serial.print(", ");
-		}
-		//Serial.println();
+		XYDataFromRadio_g.X = map(LinePosition_g, 0, 700, 0, 1023);
+		XYDataFromRadio_g.Y = analogRead(PIN_THROTLE);
 
-		int min = SENSOR_COEFFICIENT;
-		int max = 0;
-
-		Serial.println("Line");
-		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-		{
-			if (SensorValues_g[SensorIndex] < min)
-			{
-				min = SensorValues_g[SensorIndex];
-			}
-			if (SensorValues_g[SensorIndex] > max)
-			{
-				max = SensorValues_g[SensorIndex];
-			}
-		}
-
-		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-		{
-			SensorValues_g[SensorIndex] = map(SensorValues_g[SensorIndex], min, max, 0, SENSOR_COEFFICIENT);
-
-			Serial.print(SensorValues_g[SensorIndex]);
-			Serial.print(", ");
-		}
-
-		int NumeratorL = 0;
-		int DenominatorL = 0;
-		float ResultL = 0.0;
-		for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-		{
-			NumeratorL += ((SensorIndex * SENSOR_COEFFICIENT) * SensorValues_g[SensorIndex]);
-			DenominatorL += SensorValues_g[SensorIndex];
-		}
-
-		ResultL = NumeratorL / DenominatorL;
+		// Convert X and  data to Left and Right PWM data.
+		LRData_g = xy_to_lr(XYDataFromRadio_g);
 
 		Serial.println();
-		Serial.print("Position: ");
-		Serial.println(ResultL);
-	}
+		Serial.print("Line: ");
+		Serial.println(LinePosition_g);
+		Serial.print("Wheels: ");
+		Serial.print(LRData_g.L);
+		Serial.print(" ");
+		Serial.print(LRData_g.R);
+		Serial.println();
 
-	delay(1000);
+		if (LinePosition_g > 1000)
+		{
+			Serial.println("Safty STOP activated.");
+			AppStateFlag_g = AppplicationState::SaftyStop;
+		}
+		else
+		{
+			AppStateFlag_g = AppplicationState::TakeAction;
+		}
+	}
+	else if (AppStateFlag_g == AppplicationState::TakeAction)
+	{
+
+		// Controll the servo.
+		//USServo_g.write(map(LinePosition_g, 0, 700, 0, 180));
+
+		// Control the robot.
+		move_robot(LRData_g);
+
+		delay(100);
+		AppStateFlag_g = AppplicationState::ReadSensors;
+	}
+	else if (AppStateFlag_g == AppplicationState::SaftyStop)
+	{
+		analogWrite(PIN_LEFT_SPEED, 0);
+		analogWrite(PIN_RIGHT_SPEED, 0);
+		if (SaftyFlag_g == false)
+		{
+			SaftyFlag_g = true;
+			sing(PIN_USER_BUZZER, NOTE_C6, 12);
+		}
+
+		if (UserButtonState_g == LOW)
+		{
+			SaftyFlag_g = false;
+			UserButtonState_g = HIGH;
+			Serial.println("Safty STOP cleared.");
+			AppStateFlag_g = AppplicationState::WaitForStart;
+			sing(PIN_USER_BUZZER, NOTE_C6, 12);
+		}
+	}
 }
 
 #pragma region Functions
 
-void read_line_sensor()
+void read_button()
 {
-	for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-	{
-		AvgSensorValues_g[SensorIndex] = 0;
+	// read the state of the switch into a local variable:
+	int reading = digitalRead(PIN_USER_BUTTON);
 
-		for (int RowIndex = 0; RowIndex < AVERAGE_FILTER_COUNT; RowIndex++)
-		{
-			AvgSensorValues_g[SensorIndex] += analogRead(AnalogPins_g[SensorIndex]);
-		}
+	// check to see if you just pressed the button
+	// (i.e. the input went from LOW to HIGH), and you've waited long enough
+	// since the last press to ignore any noise:
 
-		AvgSensorValues_g[SensorIndex] /= AVERAGE_FILTER_COUNT;
+	// If the switch changed, due to noise or pressing:
+	if (reading != lastButtonState) {
+		// reset the debouncing timer
+		lastDebounceTime = millis();
 	}
-}
 
-void display_average_data()
-{
-	for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-	{
-		Serial.print(AvgSensorValues_g[SensorIndex]);
-		Serial.print(", ");
-	}
-	Serial.println();
-}
+	if ((millis() - lastDebounceTime) > DEBOUNCE_TIME) {
+		// whatever the reading is at, it's been there for longer than the debounce
+		// delay, so take it as the actual current state:
 
-void fill_calibration_data(int rowIndex)
-{
-	for (int SensorIndex = 0; SensorIndex < SENSORS_COUNT; SensorIndex++)
-	{
-		CalibrationSensorValues_g[SensorIndex][rowIndex] = AvgSensorValues_g[SensorIndex];
-	}
-}
-
-uint16_t min_calibration_sensor_value(int sensorIndex)
-{
-	int min = 1023;
-	for (int RowIndex = 0; RowIndex < SENSORS_COUNT; RowIndex++)
-	{
-		if (CalibrationSensorValues_g[sensorIndex][RowIndex] < min)
-		{
-			min = CalibrationSensorValues_g[sensorIndex][RowIndex];
+		// if the button state has changed:
+		if (reading != UserButtonState_g) {
+			UserButtonState_g = reading;
 		}
 	}
-	return min;
+
+	// save the reading. Next time through the loop, it'll be the lastButtonState:
+	lastButtonState = reading;
 }
 
-uint16_t max_calibration_sensor_value(int sensorIndex)
+uint16_t readSensor(int index)
 {
-	int max = 0;
-	for (int RowIndex = 0; RowIndex < SENSORS_COUNT; RowIndex++)
-	{
-		if (CalibrationSensorValues_g[sensorIndex][RowIndex] > max)
-		{
-			max = CalibrationSensorValues_g[sensorIndex][RowIndex];
-		}
-	}
-	return max;
+	return analogRead(AnalogPins_g[index]);
 }
 
-// Motor 1 pulse count ISR
+/** @brief The setup function runs once when you press reset or power the board.
+ *  @param xyData X and Y joystick data.
+ *  @return LRData_t Left and Right PWM transformation.
+ */
+LRData_t xy_to_lr(XYData_t xyData)
+{
+	static LRData_t LRDataL;
+
+	// Throttle (Y axis) and direction (X axis).
+	static int ThrottleL, DirectionL = 0;
+
+	// Left Motor helper variables.
+	int leftMotor;
+	float leftMotorScale = 0;
+
+	// Right Motor helper variables.
+	int rightMotor;
+	float rightMotorScale = 0;
+
+	// Holds the mixed output scaling factor.
+	float maxMotorScale = 0;
+
+	// Clear PWM data.
+	LRDataL.L = 0;
+	LRDataL.R = 0;
+
+	// Aquire the analog input for X and Y.
+	// Then rescale the 0..1023 range to -255..255 range.
+	ThrottleL = (512 - xyData.Y) / 2;
+	DirectionL = -(512 - xyData.X) / 2;
+
+	// Mix throttle and direction
+	leftMotor = ThrottleL + DirectionL;
+	rightMotor = ThrottleL - DirectionL;
+
+	// Calculate the scale of the results in comparision base 8 bit PWM resolution
+	leftMotorScale = leftMotor / 255.0;
+	leftMotorScale = abs(leftMotorScale);
+	rightMotorScale = rightMotor / 255.0;
+	rightMotorScale = abs(rightMotorScale);
+
+	// Choose the max scale value if it is above 1
+	maxMotorScale = max(leftMotorScale, rightMotorScale);
+	maxMotorScale = max(1, maxMotorScale);
+
+	//and apply it to the mixed values
+	LRDataL.L = constrain(leftMotor / maxMotorScale, -255, 255);
+	LRDataL.R = constrain(rightMotor / maxMotorScale, -255, 255);
+
+	// TODO: Throttle change limiting, to avoid radical changes of direction for large DC motors.
+	return LRDataL;
+}
+
+// Motor Left pulse count ISR
 void ISR_Left_Encoder()
 {
-	CounterLeft_g++;  // increment Motor 1 counter value
+	if (MotorDirectionLeft_g == MotorDirection::CW)
+	{
+		CounterLeft_g++;
+	}
+	else if (MotorDirectionLeft_g == MotorDirection::CCW)
+	{
+		CounterLeft_g--;
+	}
 }
 
-// Motor 2 pulse count ISR
+// Motor Right pulse count ISR
 void ISR_Right_Encoder()
 {
-	CounterRight_g++;  // increment Motor 2 counter value
+	if (MotorDirectionRight_g == MotorDirection::CW)
+	{
+		CounterRight_g++;
+	}
+	else if (MotorDirectionRight_g == MotorDirection::CCW)
+	{
+		CounterRight_g--;
+	}
 }
 
 // TimerOne ISR
@@ -274,6 +417,39 @@ void ISR_timerone()
 	CounterRight_g = 0;  //  reset counter to zero
 
 	Timer1.attachInterrupt(ISR_timerone);  // Enable the timer
+}
+
+void move_robot(LRData_t lrdata)
+{
+	if (LRData_g.L > DEAD_ZONE)
+	{
+		digitalWrite(PIN_LEFT_DIRECTION, HIGH);
+		analogWrite(PIN_LEFT_SPEED, abs(LRData_g.L));
+	}
+	else if (LRData_g.L < -DEAD_ZONE)
+	{
+		digitalWrite(PIN_LEFT_DIRECTION, LOW);
+		analogWrite(PIN_LEFT_SPEED, abs(LRData_g.L));
+	}
+	else
+	{
+		analogWrite(PIN_LEFT_SPEED, 0);
+	}
+
+	if (LRData_g.R > DEAD_ZONE)
+	{
+		digitalWrite(PIN_RIGHT_DIRECTION, LOW);
+		analogWrite(PIN_RIGHT_SPEED, abs(LRData_g.R));
+	}
+	else if (LRData_g.R < -DEAD_ZONE)
+	{
+		digitalWrite(PIN_RIGHT_DIRECTION, HIGH);
+		analogWrite(PIN_RIGHT_SPEED, abs(LRData_g.R));
+	}
+	else
+	{
+		analogWrite(PIN_RIGHT_SPEED, 0);
+	}
 }
 
 #pragma endregion

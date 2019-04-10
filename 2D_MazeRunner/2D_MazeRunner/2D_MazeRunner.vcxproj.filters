@@ -27,9 +27,42 @@
     <ClInclude Include="DebugPort.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AppplicationState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Notes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Sing.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="XYData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LRData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HCSR04.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LineSensor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MotorDirection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DebugPort.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HCSR04.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LineSensor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

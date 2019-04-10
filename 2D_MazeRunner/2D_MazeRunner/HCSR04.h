@@ -22,11 +22,10 @@ SOFTWARE.
 
 */
 
-// DebugPort.h
+// HCSR04.h
 
-
-#ifndef _DEBUGPORT_h
-#define _DEBUGPORT_h
+#ifndef _HCSR04_h
+#define _HCSR04_h
 
 #if defined(ARDUINO) && ARDUINO >= 100
 	#include "arduino.h"
@@ -34,31 +33,38 @@ SOFTWARE.
 	#include "WProgram.h"
 #endif
 
-#pragma region Headers
+// Devidet by 2 for geting calculation faster.
+#define US_TIME_CONSTANT 0.017
 
-/* Application configuration. */
-#include "ApplicationConfiguration.h"
+class HCSR04Class
+{
+private:
 
-#pragma endregion
+	/** @brief Triger pin of the sensor. */
+	int _PinTriger = -1;
 
-#pragma region Definitions
+	/** @brief Triger pin of the sensor. */
+	int _PinEcho = -1;
 
-#ifdef EANBLE_DEBUG_OUT
-#define DEBUGLOG(...) DEBUG_PORT.print(__VA_ARGS__)
-#else
-#define DEBUGLOG(...)
-#endif
+public:
 
-#pragma endregion
+	/** @brief Constructor.
+     *  @return Instance of class.
+     */
+	HCSR04Class();
 
-#pragma region Functions
-
-/** @brief Configure debug port.
- *  @return Void
- */
-void configure_debug_port();
-
-#pragma endregion
+	/** @brief Configure the sensor.
+	 *  @param trig int, Triger of the sensor.
+	 *  @param echo int, Echo of the sensor.
+	 *  @return Void
+	 */
+	void Config(int trig, int echo);
+	 
+	/** @brief Read sensor in [cm].
+	 *  @return int, Distance in [cm].
+	 */
+	int ReadCM();
+};
 
 #endif
 

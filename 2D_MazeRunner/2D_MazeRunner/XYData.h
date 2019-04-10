@@ -22,11 +22,10 @@ SOFTWARE.
 
 */
 
-// DebugPort.h
+// XYData.h
 
-
-#ifndef _DEBUGPORT_h
-#define _DEBUGPORT_h
+#ifndef _XYDATA_h
+#define _XYDATA_h
 
 #if defined(ARDUINO) && ARDUINO >= 100
 	#include "arduino.h"
@@ -34,31 +33,12 @@ SOFTWARE.
 	#include "WProgram.h"
 #endif
 
-#pragma region Headers
-
-/* Application configuration. */
-#include "ApplicationConfiguration.h"
-
-#pragma endregion
-
-#pragma region Definitions
-
-#ifdef EANBLE_DEBUG_OUT
-#define DEBUGLOG(...) DEBUG_PORT.print(__VA_ARGS__)
-#else
-#define DEBUGLOG(...)
-#endif
-
-#pragma endregion
-
-#pragma region Functions
-
-/** @brief Configure debug port.
- *  @return Void
- */
-void configure_debug_port();
-
-#pragma endregion
+/** @brief X and Y data structure. */
+typedef struct
+{
+	int X = 512; ///< X position.
+	int Y = 512; ///< Y position.
+}XYData_t;
 
 #endif
 

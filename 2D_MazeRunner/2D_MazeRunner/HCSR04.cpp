@@ -22,43 +22,52 @@ SOFTWARE.
 
 */
 
-// DebugPort.h
+#include "HCSR04.h"
 
+/** @brief Constructor.
+ *  @return Instance of class.
+ */
+HCSR04Class::HCSR04Class()
+{
+}
 
-#ifndef _DEBUGPORT_h
-#define _DEBUGPORT_h
-
-#if defined(ARDUINO) && ARDUINO >= 100
-	#include "arduino.h"
-#else
-	#include "WProgram.h"
-#endif
-
-#pragma region Headers
-
-/* Application configuration. */
-#include "ApplicationConfiguration.h"
-
-#pragma endregion
-
-#pragma region Definitions
-
-#ifdef EANBLE_DEBUG_OUT
-#define DEBUGLOG(...) DEBUG_PORT.print(__VA_ARGS__)
-#else
-#define DEBUGLOG(...)
-#endif
-
-#pragma endregion
-
-#pragma region Functions
-
-/** @brief Configure debug port.
+/** @brief Configure the sensor.
+ *  @param trig int, Triger of the sensor.
+ *  @param echo int, Echo of the sensor.
  *  @return Void
  */
-void configure_debug_port();
+void HCSR04Class::Config(int trig, int echo)
+{
+	_PinTriger = trig;
+	_PinEcho = echo;
 
-#pragma endregion
+	// Sets the trigPin as an Output.
+	pinMode(_PinTriger, OUTPUT);
 
-#endif
+	// Sets the echoPin as an Input.
+	pinMode(_PinEcho, INPUT);
+
+	// Clears the trigPin
+	digitalWrite(_PinTriger, LOW);
+}
+
+/** @brief Read sensor in [cm].
+ *  @return int, Distance in [cm].
+ */
+int HCSR04Class::ReadCM()
+{
+	// defines variables
+	long DurationL;
+
+	// Sets the trigPin on HIGH state for 10 micro seconds
+	digitalWrite(_PinTriger, HIGH);
+	delayMicroseconds(10);
+	digitalWrite(_PinTriger, LOW);
+
+	// Reads the echoPin, returns the sound wave travel time in microseconds
+	DurationL = pulseIn(_PinEcho, HIGH);
+
+	// Calculating the distance
+	return DurationL * US_TIME_CONSTANT;
+}
 

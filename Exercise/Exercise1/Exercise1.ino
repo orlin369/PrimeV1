@@ -23,7 +23,8 @@ void setup()
   digitalWrite(MOTOR_RIGHT_DIRECTION, LOW);
   analogWrite(MOTOR_LEFT_SPEED, 0);
   analogWrite(MOTOR_RIGHT_SPEED, 0);
-
+  delay(MoveTime_g);
+  
   // Begin program.
   // Move forward for 1 second.
   digitalWrite(MOTOR_LEFT_DIRECTION, LOW);
@@ -89,6 +90,8 @@ void setup()
   analogWrite(MOTOR_LEFT_SPEED, Speed_g);
   analogWrite(MOTOR_RIGHT_SPEED, Speed_g);
   delay(RotationTime_g);  
+  analogWrite(MOTOR_LEFT_SPEED, 0);
+  analogWrite(MOTOR_RIGHT_SPEED, 0);
 }
 
 void loop() {

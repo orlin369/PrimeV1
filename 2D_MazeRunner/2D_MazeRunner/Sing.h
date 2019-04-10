@@ -22,11 +22,10 @@ SOFTWARE.
 
 */
 
-// DebugPort.h
+// Sing.h
 
-
-#ifndef _DEBUGPORT_h
-#define _DEBUGPORT_h
+#ifndef _SING_h
+#define _SING_h
 
 #if defined(ARDUINO) && ARDUINO >= 100
 	#include "arduino.h"
@@ -34,31 +33,19 @@ SOFTWARE.
 	#include "WProgram.h"
 #endif
 
-#pragma region Headers
-
-/* Application configuration. */
-#include "ApplicationConfiguration.h"
-
-#pragma endregion
-
-#pragma region Definitions
-
-#ifdef EANBLE_DEBUG_OUT
-#define DEBUGLOG(...) DEBUG_PORT.print(__VA_ARGS__)
-#else
-#define DEBUGLOG(...)
-#endif
-
-#pragma endregion
-
-#pragma region Functions
-
-/** @brief Configure debug port.
- *  @return Void
+/** @brief Configure the sing buzzer.
+ *  @param pin int, Pin of the buzzer.
+ *  @return Void.
  */
-void configure_debug_port();
+void config_sing(int pin);
 
-#pragma endregion
+/** @brief Configure the sing buzzer.
+ *  @param pin int, Pin of the buzzer.
+ *  @param frequency long, Frequency of the note.
+ *  @param length long, Duration of the note.
+ *  @return Void.
+ */
+void sing(int pin, long frequency, long length);
 
 #endif
 
