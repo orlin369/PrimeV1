@@ -96,26 +96,48 @@ HCSR04Class HCSR04;
 
 #pragma region Prototypes Functions
 
-void read_button();
+/** @brief Read the User button.
+ *  @return Void.
+ */
+void read_user_btn();
 
-/** @brief 
- *  @param xyData X and Y joystick data.
- *  @return LRData_t Left and Right PWM transformation.
+/** @brief Read analog line sensor callback function.
+ *  @param index int, Sensor index it exists in [0 to Sensor count -1].
+ *  @return uint16_t Readed sensor data.
+ */
+uint16_t readSensor(int index);
+
+/** @brief Transform [X, Y] coordinates to [L, R] PWM values.
+ *  @param xyData X and Y "joystick" data.
+ *  @return LRData_t Left and Right PWM transformation values.
  */
 LRData_t xy_to_lr(XYData_t xyData);
 
-// Motor Left pulse count ISR
+/** @brief Interup Service Routine for Left encoder to flag when changed has ocured.
+ *  @return Void.
+ */
 void ISR_Left_Encoder();
 
-// Motor Right pulse count ISR
+/** @brief Interup Service Routine for Right encoder to flag when changed has ocured.
+ *  @return Void.
+ */
 void ISR_Right_Encoder();
 
-// TimerOne ISR
+/** @brief Interup Service Routine for Timer One to flag when changed has ocured.
+ *  @return Void.
+ */
 void ISR_timerone();
 
-void move_robot(LRData_t lrdata);
+/** @brief Initialize the H bridge for motor control.
+ *  @return Void.
+ */
+void init_bridge();
 
-uint16_t readSensor(int index);
+/** @brief Control the H bridge for motor control.
+ *  @param lrdata LRData_t, input value holding values of the PWM.
+ *  @return Void.
+ */
+void control_bridge(LRData_t lrdata);
 
 #pragma endregion
 
@@ -126,13 +148,8 @@ void setup()
 {
 	configure_debug_port();
 
-	// Setup the motor driver.
-	pinMode(PIN_LEFT_DIRECTION, OUTPUT);
-	pinMode(PIN_RIGHT_DIRECTION, OUTPUT);
-	pinMode(PIN_LEFT_SPEED, OUTPUT);
-	pinMode(PIN_RIGHT_SPEED, OUTPUT);
-	analogWrite(PIN_LEFT_SPEED, 0);
-	analogWrite(PIN_RIGHT_SPEED, 0);
+	// Initialize the motoro controller.
+	init_bridge();
 
 	// Set line sensor.
 	QTR8.setCbReadSensor(readSensor);
@@ -258,7 +275,7 @@ void loop()
 		//USServo_g.write(map(LinePosition_g, 0, 700, 0, 180));
 
 		// Control the robot.
-		move_robot(LRData_g);
+		control_bridge(LRData_g);
 
 		delay(100);
 		AppStateFlag_g = AppplicationState::ReadSensors;
@@ -286,7 +303,10 @@ void loop()
 
 #pragma region Functions
 
-void read_button()
+/** @brief Read the User button.
+ *  @return Void.
+ */
+void read_user_btn()
 {
 	// read the state of the switch into a local variable:
 	int reading = digitalRead(PIN_USER_BUTTON);
@@ -315,14 +335,18 @@ void read_button()
 	lastButtonState = reading;
 }
 
+/** @brief Read analog line sensor callback function.
+ *  @param index int, Sensor index it exists in [0 to Sensor count -1].
+ *  @return uint16_t Readed sensor data.
+ */
 uint16_t readSensor(int index)
 {
 	return analogRead(AnalogPins_g[index]);
 }
 
-/** @brief The setup function runs once when you press reset or power the board.
- *  @param xyData X and Y joystick data.
- *  @return LRData_t Left and Right PWM transformation.
+/** @brief Transform [X, Y] coordinates to [L, R] PWM values.
+ *  @param xyData X and Y "joystick" data.
+ *  @return LRData_t Left and Right PWM transformation values.
  */
 LRData_t xy_to_lr(XYData_t xyData)
 {
@@ -373,7 +397,9 @@ LRData_t xy_to_lr(XYData_t xyData)
 	return LRDataL;
 }
 
-// Motor Left pulse count ISR
+/** @brief Interup Service Routine for Left encoder to flag when changed has ocured.
+ *  @return Void.
+ */
 void ISR_Left_Encoder()
 {
 	if (MotorDirectionLeft_g == MotorDirection::CW)
@@ -386,7 +412,9 @@ void ISR_Left_Encoder()
 	}
 }
 
-// Motor Right pulse count ISR
+/** @brief Interup Service Routine for Right encoder to flag when changed has ocured.
+ *  @return Void.
+ */
 void ISR_Right_Encoder()
 {
 	if (MotorDirectionRight_g == MotorDirection::CW)
@@ -399,7 +427,9 @@ void ISR_Right_Encoder()
 	}
 }
 
-// TimerOne ISR
+/** @brief Interup Service Routine for Timer One to flag when changed has ocured.
+ *  @return Void.
+ */
 void ISR_timerone()
 {
 	Timer1.detachInterrupt();  // Stop the timer
@@ -419,7 +449,25 @@ void ISR_timerone()
 	Timer1.attachInterrupt(ISR_timerone);  // Enable the timer
 }
 
-void move_robot(LRData_t lrdata)
+/** @brief Initialize the H bridge for motor control.
+ *  @return Void.
+ */
+void init_bridge()
+{
+	// Setup the motor driver.
+	pinMode(PIN_LEFT_DIRECTION, OUTPUT);
+	pinMode(PIN_RIGHT_DIRECTION, OUTPUT);
+	pinMode(PIN_LEFT_SPEED, OUTPUT);
+	pinMode(PIN_RIGHT_SPEED, OUTPUT);
+	analogWrite(PIN_LEFT_SPEED, 0);
+	analogWrite(PIN_RIGHT_SPEED, 0);
+}
+
+/** @brief Control the H bridge for motor control.
+ *  @param lrdata LRData_t, input value holding values of the PWM.
+ *  @return Void.
+ */
+void control_bridge(LRData_t lrdata)
 {
 	if (LRData_g.L > DEAD_ZONE)
 	{
