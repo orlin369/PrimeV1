@@ -80,7 +80,7 @@ volatile unsigned int CounterRight_g = 0;
 volatile float RPMLeft_g = 0;
 volatile float RPMRight_g = 0;
 
-XYData_t XYDataFromRadio_g;
+XYData_t XYData_g;
 LRData_t LRData_g;
 
 /* @brief Ultrasonic servo controller. */
@@ -137,7 +137,7 @@ void setup()
 	// Set line sensor.
 	QTR8.setCbReadSensor(readSensor);
 	QTR8.config(LINE_SENSORS_COUNT, LINE_SENSORS_CALIBRATION_SIZE);
-
+	
 	// Set ultrasonic servo.
 	USServo_g.attach(PIN_US_SERVO);
 	USServo_g.write(90);
@@ -226,11 +226,11 @@ void loop()
 		//TODO: Get Road conditions.
 		LinePosition_g = QTR8.readLinePosition();
 
-		XYDataFromRadio_g.X = map(LinePosition_g, 0, 700, 0, 1023);
-		XYDataFromRadio_g.Y = analogRead(PIN_THROTLE);
+		XYData_g.X = map(LinePosition_g, 0, 700, 0, 1023);
+		XYData_g.Y = analogRead(PIN_THROTLE);
 
 		// Convert X and  data to Left and Right PWM data.
-		LRData_g = xy_to_lr(XYDataFromRadio_g);
+		LRData_g = xy_to_lr(XYData_g);
 
 		Serial.println();
 		Serial.print("Line: ");
