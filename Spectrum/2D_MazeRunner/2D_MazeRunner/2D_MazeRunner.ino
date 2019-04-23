@@ -42,9 +42,19 @@ SOFTWARE.
 
 #pragma endregion
 
+#pragma region Definitions
+
+#define LEFT_FLAG_INDEX 0
+
+#define RIGHT_FLAG_INDEX 1
+
+#pragma endregion
+
 #pragma region Constants
 
-const uint8_t AnalogPins_g[LINE_SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7, PIN_LS_8 };
+const uint8_t PinsLineSensor_g[LINE_SENSORS_COUNT] = {  PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7};
+
+const uint8_t PinsSideSensors_g[2] = { PIN_LS_1, PIN_LS_8 }
 
 #pragma endregion
 
@@ -91,6 +101,10 @@ LineSensorClass QTR8_g;
 
 /* @brief HC-SR04 ultra sonic sensor. */
 HCSR04Class HCSR04_g;
+
+int SideFlags_g[2] = { 0, 0 };
+
+int FlagThreshold_g = 0;
 
 #pragma endregion
 
@@ -215,6 +229,7 @@ void loop()
 		}
 		else
 		{
+			FlagThreshold_g = QTR8_g.getThreshold();
 			sing(PIN_USER_BUZZER, NOTE_C6, 8);
 			delay(1000);
 		}
@@ -340,13 +355,21 @@ void read_user_btn()
 	lastButtonState = reading;
 }
 
+void update_side_flags()
+{
+	for (int index = 0; index < 2; index++)
+	{
+		SideFlags_g[index] = analogRead(PinsSideSensors_g[index]);
+	}
+}
+
 /** @brief Read analog line sensor callback function.
  *  @param index int, Sensor index it exists in [0 to Sensor count -1].
  *  @return uint16_t Readed sensor data.
  */
 uint16_t readSensor(int index)
 {
-	return analogRead(AnalogPins_g[index]);
+	return analogRead(PinsLineSensor_g[index]);
 }
 
 /** @brief Transform [X, Y] coordinates to [L, R] PWM values.

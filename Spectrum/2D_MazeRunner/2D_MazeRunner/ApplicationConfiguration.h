@@ -84,7 +84,7 @@ SOFTWARE.
 
 #pragma region Line Sensor
 
-#define LINE_SENSORS_COUNT 8
+#define LINE_SENSORS_COUNT 6
 
 #define LINE_SENSORS_CALIBRATION_SIZE 16
 

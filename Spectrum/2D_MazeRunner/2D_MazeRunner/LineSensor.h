@@ -173,6 +173,8 @@ class LineSensorClass
      */
 	float readLinePosition();
 
+	int getThreshold();
+
 #pragma endregion
 
 };

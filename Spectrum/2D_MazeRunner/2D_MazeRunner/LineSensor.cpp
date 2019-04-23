@@ -326,3 +326,25 @@ float LineSensorClass::readLinePosition()
 	return _LinePosition;
 }
 
+int LineSensorClass::getThreshold()
+{
+	int ThresholdL = 512;
+	int MaxL = 0;
+	int MinL = 0;
+
+	for (int index = 0; index < _SensorsCount; index++)
+	{
+		MaxL += _MaximumSensorsValues[index];
+	}
+	MaxL /= _SensorsCount;
+
+	for (int index = 0; index < _SensorsCount; index++)
+	{
+		MinL += _MinimumSensorsValues[index];
+	}
+	MinL /= _SensorsCount;
+
+	ThresholdL = (MaxL + MinL) / 2;
+
+	return ThresholdL;
+}
