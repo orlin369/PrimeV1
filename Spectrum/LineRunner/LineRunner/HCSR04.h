@@ -1,5 +1,7 @@
 /*
 
+MIT License
+
 Copyright (c) [2019] [Orlin Dimitrov]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,22 +24,57 @@ SOFTWARE.
 
 */
 
-// MotorDirection.h
+// HCSR04.h
 
-#ifndef _MOTORDIRECTION_h
-#define _MOTORDIRECTION_h
+#ifndef _HCSR04_h
+#define _HCSR04_h
 
 #if defined(ARDUINO) && ARDUINO >= 100
-#include "arduino.h"
+	#include "arduino.h"
 #else
-#include "WProgram.h"
+	#include "WProgram.h"
 #endif
 
-/** @brief Motor directions enum. */
-enum MotorDirection : uint8_t
+// Undefine COMPILE_STD_DEV if you don't want Standard Deviation.
+#define COMPILE_STD_DEV
+
+
+typedef struct bufferCtl
 {
-	CW, ///< Clock ways.
-	CCW, ///< Counter clock ways.
+	float* pBegin;
+	float* pIndex;
+	size_t length;
+	bool filled;
+} BufCtl;
+
+class HCSR04
+{
+public:
+	void init(int tp, int ep);
+	long timing();
+	float convert(long microsec, int metric);
+	void setDivisor(float value, int metric);
+	static const int IN = 0;
+	static const int CM = 1;
+
+#ifdef COMPILE_STD_DEV
+	bool sampleCreate(size_t size, ...);
+	void sampleClear();
+	float unbiasedStdDev(float value, size_t bufNum);
+#endif // COMPILE_STD_DEV
+
+private:
+	int _trigPin;
+	int _echoPin;
+	float _cmDivisor;
+	float _inDivisor;
+
+#ifdef COMPILE_STD_DEV
+	size_t _numBufs;
+	BufCtl* _pBuffers;
+	void _sampleUpdate(BufCtl* buf, float msec);
+	void _freeBuffers();
+#endif // COMPILE_STD_DEV
 };
 
 #endif

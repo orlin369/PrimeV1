@@ -1,5 +1,7 @@
 /*
 
+MIT License
+
 Copyright (c) [2019] [Orlin Dimitrov]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -105,12 +107,6 @@ protected:
 	 */
 	uint16_t maxCalibrationValue(int sensorIndex);
 
-	/** @brief read a single sensor.
-	 *  @param int sensor, Sensor index.
-	 *  @return uint16_t, ADC filtred sensor value.
-	 */
-	void readEntireArray();
-
 #pragma endregion
 
 public:
@@ -122,7 +118,7 @@ public:
 	 *  @param calibrationSize int, Calibration size count.
 	 *  @return Void.
 	 */
-	void config(int sensorCount, int calibrationSize);
+	void init(int sensorCount, int calibrationSize);
 
 	/** @brief Set the read callback.
 	 *  @param callback, Callback pointer.
@@ -163,6 +159,12 @@ public:
 	 */
 	uint16_t readFiltredSensor(int sensorIndex);
 
+	/** @brief read a single sensor.
+	 *  @param int sensor, Sensor index.
+	 *  @return uint16_t, ADC filtred sensor value.
+	 */
+	void update();
+
 	/** @brief Calibrate sensor array.
 	 *  @return bool, True when calibrated.
 	 */
@@ -171,11 +173,14 @@ public:
 	/** @brief Read line position.
 	 *  @return float, Weighted position determination.
 	 */
-	float readLinePosition();
+	float getLinePosition();
 
 #pragma endregion
 
 };
+
+/** @brief Instance of the line sensor. */
+extern LineSensorClass LineSensor;
 
 #endif
 

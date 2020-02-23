@@ -1,5 +1,7 @@
 /*
 
+MIT License
+
 Copyright (c) [2019] [Orlin Dimitrov]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -41,8 +43,7 @@ enum AppplicationState : uint8_t
 	WaitForCalibration = 1U, ///< Wait for calibration state.
 	CalibrateSensors, ///< Calibrate the sensors.
 	WaitForStart, ///< Wait for start.
-	ReadSensors, ///< Read sensors.
-	TakeAction, ///< Take robot actions.
+	Run, ///< Run the robot.
 	SaftyStop, ///< Safty stop the robot.
 };
 

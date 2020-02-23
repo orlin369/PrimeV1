@@ -42,10 +42,19 @@
     <ClInclude Include="Notes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MotorDirection.h">
+    <ClInclude Include="DebugPort.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DebugPort.h">
+    <ClInclude Include="HCSR04.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BridgeController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FxTimer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Button.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -57,6 +66,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DebugPort.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HCSR04.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BridgeController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FxTimer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Button.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

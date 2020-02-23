@@ -1,5 +1,7 @@
 /*
 
+MIT License
+
 Copyright (c) [2019] [Orlin Dimitrov]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,45 +39,54 @@ SOFTWARE.
 
 #define EANBLE_DEBUG_OUT
 
+/** @brief Safty distance in CM.. */
+#define SAFTY_DISTANCE 20.0
+
 #pragma endregion
 
 #pragma region GPIO Map
 
+/** @brief Pin line sensor 1. */
 #define PIN_LS_1 8
+
+/** @brief Pin line sensor 2. */
 #define PIN_LS_2 9
+
+/** @brief Pin line sensor 3. */
 #define PIN_LS_3 10
+
+/** @brief Pin line sensor 4. */
 #define PIN_LS_4 11
+
+/** @brief Pin line sensor 5. */
 #define PIN_LS_5 12
+
+/** @brief Pin line sensor 6. */
 #define PIN_LS_6 13
+
+/** @brief Pin line sensor 7. */
 #define PIN_LS_7 14
+
+/** @brief Pin line sensor 8. */
 #define PIN_LS_8 15
 
-
+/** @brief Pin left encoder. */
 #define PIN_LEFT_ENCODER 2
 
+/** @brief Pin right encoder. */
 #define PIN_RIGHT_ENCODER 3
 
-
 #define PIN_LEFT_SPEED 5
-
 #define PIN_RIGHT_SPEED 6
-
 #define PIN_LEFT_DIRECTION 4
-
 #define PIN_RIGHT_DIRECTION 7
 
-
 #define PIN_US_SERVO 9
-
 #define PIN_US_TRIG 10
-
 #define PIN_US_ECHO 11
 
-
 #define PIN_USER_BUZZER 8
-
 #define PIN_USER_BUTTON 12
-
 #define PIN_USER_LED 13
 
 #define PIN_THROTLE A3
@@ -90,11 +101,17 @@ SOFTWARE.
 
 #pragma endregion
 
-#pragma region Encoders
+#pragma region Wheels & Diferential Model
 
 // Float for number of slots in encoder disk
 // Change to match value of encoder disk
-#define ENCODER_TRACKS 20  
+#define ENCODER_TRACKS 20
+
+#define WHEEL_DIAMETER 66.10F
+
+#define DISTANCE_BETWEEN_WHEELS 130.00F
+
+
 
 #pragma endregion
 
@@ -110,13 +127,11 @@ SOFTWARE.
 
 #pragma endregion
 
-#define TIMER1_DELAY 1000000
 
 #define DEBOUNCE_TIME 100
 
 /** @brief Dead zone of the joystick. */
 #define DEAD_ZONE 10
-
 
 #endif
 

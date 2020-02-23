@@ -1,5 +1,7 @@
 /*
 
+MIT License
+
 Copyright (c) [2019] [Orlin Dimitrov]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,7 +39,7 @@ SOFTWARE.
  *  @param pin int, Pin of the buzzer.
  *  @return Void.
  */
-void config_sing(int pin);
+void init_sing(int pin);
 
 /** @brief Configure the sing buzzer.
  *  @param pin int, Pin of the buzzer.

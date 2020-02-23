@@ -1,5 +1,7 @@
 /*
 
+MIT License
+
 Copyright (c) [2019] [Orlin Dimitrov]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -62,7 +64,7 @@ uint16_t LineSensorClass::maxCalibrationValue(int sensorIndex)
  *  @param int sensor, Sensor index.
  *  @return uint16_t, ADC filtred sensor value.
  */
-void LineSensorClass::readEntireArray()
+void LineSensorClass::update()
 {
 	for (int index = 0; index < _SensorsCount; index++)
 	{
@@ -75,7 +77,7 @@ void LineSensorClass::readEntireArray()
  *  @param calibrationSize int, Calibration size count.
  *  @return Void.
  */
-void LineSensorClass::config(int sensorCount, int calibrationSize)
+void LineSensorClass::init(int sensorCount, int calibrationSize)
 {
 	_SensorsCount = sensorCount;
 	_CalibrationSize = calibrationSize;
@@ -189,8 +191,6 @@ bool LineSensorClass::calibrate()
 
 	if (_CalibrationFlagSize < _CalibrationSize)
 	{
-		readEntireArray();
-
 		for (int index = 0; index < _SensorsCount; index++)
 		{
 			_CalibrationSensorsValues[index][_CalibrationFlagSize] = _CurrenSensorValues[index];
@@ -232,7 +232,7 @@ bool LineSensorClass::calibrate()
 /** @brief Read line position.
  *  @return float, Weighted position determination.
  */
-float LineSensorClass::readLinePosition()
+float LineSensorClass::getLinePosition()
 {
 	static int MaxValueL;
 	static int MinValueL;
@@ -241,8 +241,6 @@ float LineSensorClass::readLinePosition()
 	_Denominator = 0;
 	_LinePosition = 0;
 	_OnTheLineFlag = false;
-
-	readEntireArray();
 
 	// Get minimums and maximums.
 	for (int index = 0; index < _SensorsCount; index++)
@@ -326,3 +324,4 @@ float LineSensorClass::readLinePosition()
 	return _LinePosition;
 }
 
+LineSensorClass LineSensor;
