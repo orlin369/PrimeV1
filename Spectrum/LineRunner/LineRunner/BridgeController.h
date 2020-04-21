@@ -123,7 +123,7 @@ class BridgeControllerClass
 	 */
 	void SpinLeft(float mm, int mspeed);
 
-	void MoveSpeed(uint8_t left, uint8_t right);
+	void MoveSpeed(int16_t left, int16_t right);
 
 
 #pragma endregion

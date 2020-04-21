@@ -34,6 +34,7 @@ SOFTWARE.
 #include "DebugPort.h"
 #include "LineSensor.h"
 #include "HCSR04.h"
+#include <HCSR04.h>
 #include "LRData.h"
 #include "XYData.h"
 #include "Sing.h"
@@ -46,15 +47,25 @@ SOFTWARE.
 
 #define LEFT_FLAG_INDEX 0
 
-#define RIGHT_FLAG_INDEX 1
+#define RIGHT_FLAG_INDEX 7
 
 #pragma endregion
 
 #pragma region Constants
 
-const uint8_t PinsLineSensor_g[LINE_SENSORS_COUNT] = {  PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7};
+const uint8_t PinsLineSensor_g[LINE_SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7, PIN_LS_8 };
 
-const uint8_t PinsSideSensors_g[2] = { PIN_LS_1, PIN_LS_8 }
+#pragma endregion
+
+#pragma region Enums
+
+enum Crossroad : uint8_t
+{
+	Straight = 0U,
+	LeftTurn,
+	RightTurn,
+	TType
+};
 
 #pragma endregion
 
@@ -102,9 +113,10 @@ LineSensorClass QTR8_g;
 /* @brief HC-SR04 ultra sonic sensor. */
 HCSR04Class HCSR04_g;
 
-int SideFlags_g[2] = { 0, 0 };
+/* @brief Actual sensors values. */
+uint16_t ActualSensorsValues_g[LINE_SENSORS_COUNT];
 
-int FlagThreshold_g = 0;
+uint8_t CrossroadType_g = Crossroad::Straight;
 
 #pragma endregion
 
@@ -120,6 +132,11 @@ void read_user_btn();
  *  @return uint16_t Readed sensor data.
  */
 uint16_t readSensor(int index);
+
+/** @brief Read line position.
+ *  @return float, Weighted position determination.
+ */
+float readLinePosition();
 
 /** @brief Transform [X, Y] coordinates to [L, R] PWM values.
  *  @param xyData X and Y "joystick" data.
@@ -174,7 +191,7 @@ void setup()
 	//USServo_g.write(90);
 
 	// Set ultrasonic.
-	HCSR04_g.Config(PIN_US_TRIG, PIN_US_ECHO);
+	//HCSR04_g.Config(PIN_US_TRIG, PIN_US_ECHO);
 
 	// Set user interaction.
 	pinMode(PIN_USER_LED, OUTPUT);
@@ -229,7 +246,6 @@ void loop()
 		}
 		else
 		{
-			FlagThreshold_g = QTR8_g.getThreshold();
 			sing(PIN_USER_BUZZER, NOTE_C6, 8);
 			delay(1000);
 		}
@@ -257,45 +273,98 @@ void loop()
 	{
 		// 
 		//USDistance_g = HCSR04_g.ReadCM();
+		//DEBUGLOG("US distance: ");
+		//DEBUGLOG(USDistance_g);
+		//DEBUGLOG("\r\n");
 
-		//TODO: Get Road conditions.
-		LinePosition_g = QTR8_g.readLinePosition();
-		
-		XYData_g.X = map(LinePosition_g, 0, 700, 0, 1023);
-		XYData_g.Y = analogRead(PIN_THROTLE);
+		// Read line sensor.
+		QTR8_g.readEntireArray(ActualSensorsValues_g);
 
-		// Convert X and  data to Left and Right PWM data.
-		LRData_g = xy_to_lr(XYData_g);
-
-		Serial.println();
-		Serial.print("Line: ");
-		Serial.println(LinePosition_g);
-		Serial.print("Wheels: ");
-		Serial.print(LRData_g.L);
-		Serial.print(" ");
-		Serial.print(LRData_g.R);
-		Serial.println();
-
-		if (LinePosition_g > 1000)
+		if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] > LINE_THRESHOLD) || (ActualSensorsValues_g[RIGHT_FLAG_INDEX] > LINE_THRESHOLD))
 		{
-			Serial.println("Safty STOP activated.");
-			AppStateFlag_g = AppplicationState::SaftyStop;
+			if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] > LINE_THRESHOLD) && (ActualSensorsValues_g[RIGHT_FLAG_INDEX] > LINE_THRESHOLD))
+			{
+				CrossroadType_g = Crossroad::TType;
+			}
+			else if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] > LINE_THRESHOLD) && (ActualSensorsValues_g[RIGHT_FLAG_INDEX] <= LINE_THRESHOLD))
+			{
+				CrossroadType_g = Crossroad::LeftTurn;
+			}
+			else if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] <= LINE_THRESHOLD) && (ActualSensorsValues_g[RIGHT_FLAG_INDEX] > LINE_THRESHOLD))
+			{
+				CrossroadType_g = Crossroad::RightTurn;
+			}
 		}
-		else
+		else if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] <= LINE_THRESHOLD) && (ActualSensorsValues_g[RIGHT_FLAG_INDEX] <= LINE_THRESHOLD))
 		{
 			AppStateFlag_g = AppplicationState::TakeAction;
+		}
+
+		if (USDistance_g > 10 && USDistance_g <= 40)
+		{
+			AppStateFlag_g = AppplicationState::SaftyStop;
 		}
 	}
 	else if (AppStateFlag_g == AppplicationState::TakeAction)
 	{
+		if (CrossroadType_g == Crossroad::TType)
+		{
+			// Power applyd to the wheels.
+			XYData_g.Y = 0;
+			XYData_g.X = 0;
+
+			// Convert X and  data to Left and Right PWM data.
+			LRData_g = xy_to_lr(XYData_g);
+
+			// Control the robot.
+			control_bridge(LRData_g);
+
+			// TODO: Make left turn.
+			Serial.println("TType .....");
+			CrossroadType_g = Crossroad::Straight;
+		}
+		else if (CrossroadType_g == Crossroad::LeftTurn)
+		{
+			turn_left();
+			Serial.println("LeftTurn .....");
+			CrossroadType_g = Crossroad::Straight;
+		}
+		else if (CrossroadType_g == Crossroad::RightTurn)
+		{
+			turn_right();
+			Serial.println("RightTurn .....");
+			CrossroadType_g = Crossroad::Straight;
+		}
+		else if(CrossroadType_g == Crossroad::Straight)
+		{
+			LinePosition_g = readLinePosition(ActualSensorsValues_g);
+			Serial.print("Line: ");
+			Serial.println(LinePosition_g);
+
+			if (LinePosition_g > 1000)
+			{
+				Serial.println("Safty STOP activated.");
+				AppStateFlag_g = AppplicationState::SaftyStop;
+				return;
+			}
+
+			// Power applyd to the wheels.
+			XYData_g.Y = analogRead(PIN_THROTLE);
+			XYData_g.X = map(LinePosition_g, 0, 500, 0, 1023);
+
+			// Convert X and  data to Left and Right PWM data.
+			LRData_g = xy_to_lr(XYData_g);
+
+			// Control the robot.
+			control_bridge(LRData_g);
+
+			//
+			delay(500);
+		}
 
 		// Controll the servo.
 		//USServo_g.write(map(LinePosition_g, 0, 700, 0, 180));
 
-		// Control the robot.
-		control_bridge(LRData_g);
-
-		delay(100);
 		AppStateFlag_g = AppplicationState::ReadSensors;
 	}
 	else if (AppStateFlag_g == AppplicationState::SaftyStop)
@@ -355,14 +424,6 @@ void read_user_btn()
 	lastButtonState = reading;
 }
 
-void update_side_flags()
-{
-	for (int index = 0; index < 2; index++)
-	{
-		SideFlags_g[index] = analogRead(PinsSideSensors_g[index]);
-	}
-}
-
 /** @brief Read analog line sensor callback function.
  *  @param index int, Sensor index it exists in [0 to Sensor count -1].
  *  @return uint16_t Readed sensor data.
@@ -370,6 +431,72 @@ void update_side_flags()
 uint16_t readSensor(int index)
 {
 	return analogRead(PinsLineSensor_g[index]);
+}
+
+/** @brief Read line position.
+ *  @return float, Weighted position determination.
+ */
+float readLinePosition(uint16_t * ActualSensorsValues)
+{
+	/** @brief Weighted total. */
+	static uint32_t _WeightedTotla;
+
+	/** @brief Denominator */
+	static uint16_t _Denominator;
+
+	/** @brief Line position */
+	static float _LinePosition;
+
+	/* @brief On the line flag. */
+	static bool _OnTheLineFlag;
+
+	_WeightedTotla = 0;
+	_Denominator = 0;
+	_LinePosition = 0;
+	_OnTheLineFlag = false;
+
+	// TODO: Call callback with new values of readed line.
+
+	// Determin line position.
+	for (uint8_t index = 1; index < 6; index++)
+	{
+		uint16_t value = ActualSensorsValues[index];
+		
+		if (QTR8_g.getInvertedReadings())
+		{
+			value = QTR8_g.getResolution() - value;
+		}
+
+		// keep track of whether we see the line at all
+		if (value > 70)
+		{
+			_OnTheLineFlag = true;
+		}
+
+		// Only average in values that are above a noise threshold
+		if (value > 50)
+		{
+			_WeightedTotla += (uint32_t)value * (index * QTR8_g.getResolution());
+			_Denominator += value;
+		}
+	}
+
+	if (_OnTheLineFlag == false)
+	{
+		// If it last read to the left of center, return 0.
+		if (_LinePosition < (6 - 1) * QTR8_g.getResolution() / 2)
+		{
+			return 0;
+		}
+		// If it last read to the right of center, return the max.
+		else
+		{
+			return (6 - 1) * QTR8_g.getResolution();
+		}
+	}
+
+	_LinePosition = _WeightedTotla / _Denominator;
+	return _LinePosition;
 }
 
 /** @brief Transform [X, Y] coordinates to [L, R] PWM values.
@@ -496,6 +623,15 @@ void init_bridge()
  */
 void control_bridge(LRData_t lrdata)
 {
+	Serial.println();
+	Serial.print("Wheels: ");
+	Serial.print(lrdata.L);
+	Serial.print(" ");
+	Serial.print(lrdata.R);
+	Serial.println();
+
+	//return;
+
 	if (LRData_g.L > DEAD_ZONE)
 	{
 		digitalWrite(PIN_LEFT_DIRECTION, HIGH);
@@ -525,6 +661,112 @@ void control_bridge(LRData_t lrdata)
 	{
 		analogWrite(PIN_RIGHT_SPEED, 0);
 	}
+}
+
+void turn_left()
+{
+	DEBUGLOG("\r\n");
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
+	// 1. Stop.
+    // Power applyd to the wheels.
+	XYData_g.Y = 0;
+	XYData_g.X = 0;
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+
+	// 2. Move for some time forward.
+	// Power applyd to the wheels.
+	XYData_g.Y = map(128, -255, 255, 0, 1023);
+	XYData_g.X = 0;
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+	delay(2000);
+
+	// 3. Stop.
+	// Power applyd to the wheels.
+	XYData_g.Y = 0;
+	XYData_g.X = 0;
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+
+	// 4. Turn left for some time forward.
+	// Power applyd to the wheels.
+	XYData_g.Y = 0;
+	XYData_g.X = map(128, -255, 255, 0, 1023);
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+	delay(2000);
+
+	// 3. Stop.
+	// Power applyd to the wheels.
+	XYData_g.Y = 0;
+	XYData_g.X = 0;
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+}
+
+void turn_right()
+{
+	DEBUGLOG("\r\n");
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
+	// 1. Stop.
+	// Power applyd to the wheels.
+	XYData_g.Y = 0;
+	XYData_g.X = 0;
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+
+	// 2. Move for some time forward.
+	// Power applyd to the wheels.
+	XYData_g.Y = map(128, -255, 255, 0, 1023);
+	XYData_g.X = 0;
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+	delay(2000);
+
+	// 3. Stop.
+	// Power applyd to the wheels.
+	XYData_g.Y = 0;
+	XYData_g.X = 0;
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+
+	// 4. Turn left for some time forward.
+	// Power applyd to the wheels.
+	XYData_g.Y = 0;
+	XYData_g.X = map(-128, -255, 255, 0, 1023);
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
+	delay(2000);
+
+	// 3. Stop.
+	// Power applyd to the wheels.
+	XYData_g.Y = 0;
+	XYData_g.X = 0;
+	// Convert X and  data to Left and Right PWM data.
+	LRData_g = xy_to_lr(XYData_g);
+	// Control the robot.
+	control_bridge(LRData_g);
 }
 
 #pragma endregion

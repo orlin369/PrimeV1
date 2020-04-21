@@ -56,9 +56,6 @@ private:
 	/** @brief Sensors count. */
 	uint8_t _SensorsCount = 8;
 
-	/** @brief Calibration size. */
-	uint8_t _CalibrationSize = 16;
-
 	/** @brief Average filter count. */
 	uint8_t _AvgFilterCount = 5;
 
@@ -71,14 +68,8 @@ private:
 	/* @brief Inverted readings flag. */
 	bool _InvertedReadings = false;
 
-	/* @brief Calibration flag size. */
-	int _CalibrationFlagSize = 0;
-
 	/* @brief Average sensors values. */
 	uint16_t * _CurrenSensorValues;
-
-	/* @brief Calibration sensors values. */
-	uint16_t ** _CalibrationSensorsValues;
 
 	/* @brief Minimum sensors values. */
 	uint16_t * _MinimumSensorsValues;
@@ -95,18 +86,6 @@ protected:
 
 #pragma region Methods
 
-	/** @brief Gets minimum calibration value.
-	 *  @param sensorIndex int, Sensor index.
-	 *  @return int, Minimum value for this chanel.
-	 */
-	uint16_t minCalibrationValue(int sensorIndex);
-
-	/** @brief Gets maximum calibration value.
-	 *  @param sensorIndex int, Sensor index.
-	 *  @return int, Maximum value for this chanel.
-	 */
-	uint16_t maxCalibrationValue(int sensorIndex);
-
 #pragma endregion
 
 public:
@@ -118,7 +97,7 @@ public:
 	 *  @param calibrationSize int, Calibration size count.
 	 *  @return Void.
 	 */
-	void init(int sensorCount, int calibrationSize);
+	void init(int sensorCount);
 
 	/** @brief Set the read callback.
 	 *  @param callback, Callback pointer.
@@ -166,9 +145,9 @@ public:
 	void update();
 
 	/** @brief Calibrate sensor array.
-	 *  @return bool, True when calibrated.
+	 *  @return Void.
 	 */
-	bool calibrate();
+	void calibrate();
 
 	/** @brief Read line position.
 	 *  @return float, Weighted position determination.

@@ -84,9 +84,11 @@ SOFTWARE.
 
 #pragma region Line Sensor
 
-#define LINE_SENSORS_COUNT 6
+#define LINE_SENSORS_COUNT 8
 
 #define LINE_SENSORS_CALIBRATION_SIZE 16
+
+#define LINE_THRESHOLD 50
 
 #pragma endregion
 

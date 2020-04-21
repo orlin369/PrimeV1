@@ -252,19 +252,19 @@ void BridgeControllerClass::SpinLeft(float mm, int mspeed)
  *  @param lrdata LRData_t, input value holding values of the PWM.
  *  @return Void.
  */
-void BridgeControllerClass::MoveSpeed(uint8_t left, uint8_t right)
+void BridgeControllerClass::MoveSpeed(int16_t left, int16_t right)
 {
 	if (left > 0)
 	{
 		// Forward.
 		digitalWrite(m_bridgeModel.LeftDir, LOW);
-		analogWrite(m_bridgeModel.LeftSpd, left);
+		analogWrite(m_bridgeModel.LeftSpd, abs(left));
 	}
 	else if (left < 0)
 	{
 		// Revers.
 		digitalWrite(m_bridgeModel.LeftDir, HIGH);
-		analogWrite(m_bridgeModel.LeftSpd, left);
+		analogWrite(m_bridgeModel.LeftSpd, abs(left));
 	}
 	else
 	{
@@ -275,13 +275,13 @@ void BridgeControllerClass::MoveSpeed(uint8_t left, uint8_t right)
 	{
 		// Forward.
 		digitalWrite(m_bridgeModel.RightDir, HIGH);
-		analogWrite(m_bridgeModel.RightSpd, right);
+		analogWrite(m_bridgeModel.RightSpd, abs(right));
 	}
 	else if (right < 0)
 	{
 		// Revers.
 		digitalWrite(m_bridgeModel.RightDir, LOW);
-		analogWrite(m_bridgeModel.RightSpd, right);
+		analogWrite(m_bridgeModel.RightSpd, abs(right));
 	}
 	else
 	{

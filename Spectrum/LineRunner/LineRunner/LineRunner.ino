@@ -26,6 +26,8 @@ SOFTWARE.
 
 #pragma region Headers
 
+#include <Servo.h>
+
 #include "Button.h"
 #include "FxTimer.h"
 #include "BridgeController.h"
@@ -56,10 +58,13 @@ uint8_t AppStateFlag_g = AppplicationState::WaitForCalibration;
 /* @brief Ultrasonic servo controller. */
 HCSR04 HCSR04_g;
 
+Servo USServo_g;
+
 bool SaftyFlag_g = false;
 
 /* @brief Line position value. */
 float LinePosition_g = 0;
+int Throtle_g = 512;
 
 /* @brief Line position value. */
 float USDistance_g = 200;
@@ -67,10 +72,9 @@ float USDistance_g = 200;
 XYData_t XYData_g;
 LRData_t LRData_g;
 
+FxTimer ControlLoopTimer_g = FxTimer();
 
-int lastError = 0;
-
-const int MAX_SPEED = 400;
+int UserButtonState_g;
 
 #pragma endregion
 
@@ -138,13 +142,13 @@ void setup()
 	//play_animation();
 
 	// Initialize the line sensor.
-	LineSensor.init(LINE_SENSORS_COUNT, LINE_SENSORS_CALIBRATION_SIZE);
+	LineSensor.init(LINE_SENSORS_COUNT);
 	LineSensor.setCbReadSensor(readSensor);
-	LineSensor.setInvertedReadings(true);
+	LineSensor.setInvertedReadings(false);
 
 	// Initialize the ultrasonic servo.
-	//USServo_g.attach(PIN_US_SERVO);
-	//USServo_g.write(90);
+	USServo_g.attach(PIN_US_SERVO);
+	USServo_g.write(90);
 
 	// Initialize the ultrasonic.
 	HCSR04_g.init(PIN_US_TRIG, PIN_US_ECHO);
@@ -160,8 +164,13 @@ void setup()
 	init_sing(PIN_USER_BUZZER);
 	sing_startup();
 
+	ControlLoopTimer_g.setExpirationTime(100);
+
 	Serial.println("Started...");
 }
+
+int calibrations = 0;
+
 
 /** @brief Main loop.
  *  @return Void.
@@ -170,35 +179,50 @@ void loop()
 {
 	UserButton.update();
 	LineSensor.update();
-	int UserButtonState_g = UserButton.getState();
+	UserButtonState_g = UserButton.getState();
+	// long microsec = HCSR04_g.timing();
+	// USDistance_g = HCSR04_g.convert(microsec, HCSR04::CM);
+	if (UserButtonState_g == LOW)
+	{
+		sing(PIN_USER_BUZZER, NOTE_C6, 12);
+	}
 
 	if (AppStateFlag_g == AppplicationState::WaitForCalibration)
 	{
 		if (UserButtonState_g == LOW)
 		{
-			UserButtonState_g = HIGH;
 			Serial.println("Begin calibration.");
 			AppStateFlag_g = AppplicationState::CalibrateSensors;
-
-			sing(PIN_USER_BUZZER, NOTE_C6, 12);
+			return;
 		}
 	}
 	else if (AppStateFlag_g == AppplicationState::CalibrateSensors)
 	{
+		if (UserButtonState_g == LOW)
+		{
+			AppStateFlag_g = AppplicationState::WaitForStart;
+			Serial.println("Manual stoped calibration.");
+			return;
+		}
+
 		digitalWrite(PIN_USER_LED, LOW);
 		digitalWrite(PIN_USER_LED, HIGH);
 
-		if (LineSensor.calibrate())
+		if (calibrations < LINE_SENSORS_CALIBRATION_SIZE)
 		{
+			LineSensor.calibrate();
+			calibrations++;
 			sing(PIN_USER_BUZZER, NOTE_C4, 8);
-			AppStateFlag_g = AppplicationState::WaitForStart;
 		}
 		else
 		{
+			Serial.println("Calibration ready.");
+			calibrations = 0;
+			AppStateFlag_g = AppplicationState::WaitForStart;
 			sing(PIN_USER_BUZZER, NOTE_C6, 8);
 		}
 
-		delay(1000);
+		delay(100);
 		digitalWrite(PIN_USER_LED, LOW);
 	}
 	else if (AppStateFlag_g == AppplicationState::WaitForStart)
@@ -214,16 +238,19 @@ void loop()
 			}
 
 			Serial.println();
-			UserButtonState_g = HIGH;
 			sing(PIN_USER_BUZZER, NOTE_C6, 12);
 			AppStateFlag_g = AppplicationState::Run;
+			return;
 		}
 	}
 	else if (AppStateFlag_g == AppplicationState::Run)
 	{
-		// 
-		// long microsec = HCSR04_g.timing();
-		// USDistance_g = HCSR04_g.convert(microsec, HCSR04::CM);
+		if (UserButtonState_g == LOW)
+		{
+			AppStateFlag_g = AppplicationState::SaftyStop;
+			Serial.println("Manual safty stop activate.");
+			return;
+		}
 
 		if (USDistance_g < SAFTY_DISTANCE)
 		{
@@ -232,43 +259,28 @@ void loop()
 			return;
 		}
 
-		//TODO: Get Road conditions.
+		// Get Road conditions.
 		LinePosition_g = LineSensor.getLinePosition();
 
 		if (LinePosition_g > 1000)
 		{
-			Serial.println("Safty STOP activated.");
 			AppStateFlag_g = AppplicationState::SaftyStop;
+			Serial.println("Safty STOP activated.");
 			return;
 		}
 
-		//TODO: PD regulator
-		int error = LinePosition_g - 350;
-		Serial.print("Error: ");
-		Serial.println(error);
-
-		int speedDifference = error / 4 + 6 * (error - lastError);
-		lastError = error;
-
-		LRData_g.L = MAX_SPEED - speedDifference;
-		LRData_g.R = MAX_SPEED + speedDifference;
-		
-		if (LRData_g.L < 0)
-			LRData_g.L = 0;
-		if (LRData_g.R < 0)
-			LRData_g.R = 0;
-		if (LRData_g.L > MAX_SPEED)
-			LRData_g.L = MAX_SPEED;
-		if (LRData_g.R > MAX_SPEED)
-			LRData_g.R = MAX_SPEED;
-
-		//XYData_g.X = map(LinePosition_g, 0, 700, 0, 1023);
-		//XYData_g.Y = speedDifference + analogRead(PIN_THROTLE);
+		Throtle_g = analogRead(PIN_THROTLE);
+		if (Throtle_g < 512 + 20 && Throtle_g > 512 - 20)
+		{
+			Throtle_g = 512;
+		}
+		XYData_g.X = map(LinePosition_g, 700, 0, 0, 1023);
+		XYData_g.Y = Throtle_g;
 
 		// Convert X and  data to Left and Right PWM data.
-		//LRData_g = xy_to_lr(XYData_g);
+		LRData_g = xy_to_lr(XYData_g);
 
-		//Serial.println();
+		Serial.println();
 		Serial.print("Line: ");
 		Serial.println(LinePosition_g);
 		Serial.print("Wheels: ");
@@ -277,40 +289,30 @@ void loop()
 		Serial.print(LRData_g.R);
 		Serial.println();
 		
-		if (UserButtonState_g == LOW)
-		{
-			UserButtonState_g = HIGH;
-			Serial.println("Manual safty stop activate.");
-			AppStateFlag_g = AppplicationState::SaftyStop;
-			sing(PIN_USER_BUZZER, NOTE_C6, 12);
-			return;
-		}
-
 		// Controll the servo.
-		//USServo_g.write(map(LinePosition_g, 0, 700, 0, 180));
+		USServo_g.write(map(LinePosition_g, 700, 0, 60, 120));
 
 		// Control the robot.
-		//control_bridge(LRData_g);
+		BridgeController.MoveSpeed(LRData_g.L, LRData_g.R);
 
 		delay(100);
 	}
 	else if (AppStateFlag_g == AppplicationState::SaftyStop)
 	{
-		if (SaftyFlag_g == false)
-		{
-			SaftyFlag_g = true;
-			analogWrite(PIN_LEFT_SPEED, 0);
-			analogWrite(PIN_RIGHT_SPEED, 0);
-			sing(PIN_USER_BUZZER, NOTE_C6, 12);
-		}
-
 		if (UserButtonState_g == LOW)
 		{
 			SaftyFlag_g = false;
-			UserButtonState_g = HIGH;
-			Serial.println("Safty STOP cleared.");
 			AppStateFlag_g = AppplicationState::WaitForStart;
+			Serial.println("Safty STOP cleared.");
+			return;
+		}
+
+		if (SaftyFlag_g == false)
+		{
+			SaftyFlag_g = true;
+			BridgeController.MoveSpeed(0, 0);
 			sing(PIN_USER_BUZZER, NOTE_C6, 12);
+			return;
 		}
 	}
 }

@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include <stdlib.h>
 #include <string.h>
-#include <HCSR04.h>
+#include "HCSR04.h"
 
 void HCSR04::init(int tp, int ep)
 {

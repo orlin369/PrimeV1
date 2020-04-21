@@ -42,15 +42,6 @@ class LineSensorClass
 	 /** @brief Callback function. */
 	 uint16_t(*callbackGetSensorValue)(int);
 
-	 /** @brief Line position */
-	 float _LinePosition;
-
-	 /** @brief Weighted total. */
-	 uint32_t _WeightedTotla = 0;
-
-	 /** @brief Denominator */
-	 uint16_t _Denominator = 0;
-
 	 /** @brief Sensors count. */
 	 uint8_t _SensorsCount = 8;
 	 
@@ -62,9 +53,6 @@ class LineSensorClass
 	 
 	 /** @brief Sensor resolution. */
 	 uint32_t _Resolution = 100;
-	
-	 /* @brief On the line flag. */
-	 bool _OnTheLineFlag = false;
 	 
 	 /* @brief Inverted readings flag. */
 	 bool _InvertedReadings = false;
@@ -84,9 +72,6 @@ class LineSensorClass
 	 /* @brief Maximum sensors values. */
 	 uint16_t * _MaximumSensorsValues;
 	 
-	 /* @brief Actual sensors values. */
-	 uint16_t * _ActualSensorsValues;
-
 #pragma endregion
 
  protected:
@@ -104,12 +89,6 @@ class LineSensorClass
 	  *  @return int, Maximum value for this chanel.
 	  */
 	 uint16_t maxCalibrationValue(int sensorIndex);
-
-	 /** @brief read a single sensor.
-      *  @param int sensor, Sensor index.
-      *  @return uint16_t, ADC filtred sensor value.
-      */
-	 void readEntireArray();
 
 #pragma endregion
 
@@ -168,12 +147,11 @@ class LineSensorClass
      */
 	bool calibrate();
 
-	/** @brief Read line position.
-     *  @return float, Weighted position determination.
+	/** @brief read a single sensor.
+     *  @param int sensor, Sensor index.
+     *  @return uint16_t, ADC filtred sensor value.
      */
-	float readLinePosition();
-
-	int getThreshold();
+	void readEntireArray(uint16_t * ActualSensorsValues);
 
 #pragma endregion
 

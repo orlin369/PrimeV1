@@ -26,38 +26,35 @@ SOFTWARE.
 
 #include "LineSensor.h"
 
-/** @brief Gets minimum calibration value.
- *  @param sensorIndex int, Sensor index.
- *  @return int, Minimum value for this chanel.
+/** @brief Configure the sensor.
+ *  @param sensorCount int, Sensor count.
+ *  @param calibrationSize int, Calibration size count.
+ *  @return Void.
  */
-uint16_t LineSensorClass::minCalibrationValue(int sensorIndex)
+void LineSensorClass::init(int sensorCount)
 {
-	int min = 1023;
-	for (int RowIndex = 0; RowIndex < _SensorsCount; RowIndex++)
-	{
-		if (_CalibrationSensorsValues[sensorIndex][RowIndex] < min)
-		{
-			min = _CalibrationSensorsValues[sensorIndex][RowIndex];
-		}
-	}
-	return min;
-}
+	_SensorsCount = sensorCount;
 
-/** @brief Gets maximum calibration value.
- *  @param sensorIndex int, Sensor index.
- *  @return int, Maximum value for this chanel.
- */
-uint16_t LineSensorClass::maxCalibrationValue(int sensorIndex)
-{
-	int max = 0;
-	for (int RowIndex = 0; RowIndex < _SensorsCount; RowIndex++)
+	/* @brief Average sensors values. */
+	_CurrenSensorValues = new uint16_t[_SensorsCount];
+
+	/* @brief Minimum sensors values. */
+	_MinimumSensorsValues = new uint16_t[_SensorsCount];
+
+	/* @brief Maximum sensors values. */
+	_MaximumSensorsValues = new uint16_t[_SensorsCount];
+
+	/* @brief Actual sensors values. */
+	_ActualSensorsValues = new uint16_t[_SensorsCount];
+
+	// Init
+	for (uint8_t index = 0; index < _SensorsCount; index++)
 	{
-		if (_CalibrationSensorsValues[sensorIndex][RowIndex] > max)
-		{
-			max = _CalibrationSensorsValues[sensorIndex][RowIndex];
-		}
+		_CurrenSensorValues[index] = 0;
+		_MinimumSensorsValues[index] = 1023;
+		_MaximumSensorsValues[index] = 0;
+		_ActualSensorsValues[index] = 0;
 	}
-	return max;
 }
 
 /** @brief read a single sensor.
@@ -72,35 +69,54 @@ void LineSensorClass::update()
 	}
 }
 
-/** @brief Configure the sensor.
- *  @param sensorCount int, Sensor count.
- *  @param calibrationSize int, Calibration size count.
- *  @return Void.
+/** @brief Calibrate sensor array.
+ *  @return bool, True when calibrated.
  */
-void LineSensorClass::init(int sensorCount, int calibrationSize)
+void LineSensorClass::calibrate()
 {
-	_SensorsCount = sensorCount;
-	_CalibrationSize = calibrationSize;
 
-	/* @brief Average sensors values. */
-	_CurrenSensorValues = new uint16_t[_SensorsCount];
-
-	/* @brief Calibration sensors values. */
-	_CalibrationSensorsValues = new uint16_t*[_SensorsCount];
-	for (int index = 0; index < _SensorsCount; ++index)
+	for (int index = 0; index < _SensorsCount; index++)
 	{
-		_CalibrationSensorsValues[index] = new uint16_t[_CalibrationSize];
+		_CurrenSensorValues[index] = readFiltredSensor(index);
+
+		if (_CurrenSensorValues[index] < _MinimumSensorsValues[index])
+		{
+			_MinimumSensorsValues[index] = _CurrenSensorValues[index];
+		}
+
+		if (_CurrenSensorValues[index] > _MaximumSensorsValues[index])
+		{
+			_MaximumSensorsValues[index] = _CurrenSensorValues[index];
+		}
 	}
 
-	/* @brief Minimum sensors values. */
-	_MinimumSensorsValues = new uint16_t[_SensorsCount];
+	Serial.println();
+	Serial.print("Current: ");
+	for (int index = 0; index < _SensorsCount; index++)
+	{
+		Serial.print(_CurrenSensorValues[index]);
+		Serial.print(", ");
+	}
+	Serial.println();
 
-	/* @brief Maximum sensors values. */
-	_MaximumSensorsValues = new uint16_t[_SensorsCount];
+	Serial.print("Minimum: ");
+	for (int index = 0; index < _SensorsCount; index++)
+	{
+		Serial.print(_MinimumSensorsValues[index]);
+		Serial.print(", ");
+	}
+	Serial.println();
 
-	/* @brief Actual sensors values. */
-	_ActualSensorsValues = new uint16_t[_SensorsCount];
+	Serial.print("Maximum: ");
+	for (int index = 0; index < _SensorsCount; index++)
+	{
+		Serial.print(_MaximumSensorsValues[index]);
+		Serial.print(", ");
+	}
+	Serial.println();
 }
+
+
 
 /** @brief Set the read callback.
  *  @param callback, Callback pointer.
@@ -110,6 +126,7 @@ void LineSensorClass::setCbReadSensor(uint16_t(*callback)(int))
 {
 	callbackGetSensorValue = callback;
 }
+
 
 /** @brief Set inverted readings flag.
  *  @param value bool, Inverted flag.
@@ -128,6 +145,7 @@ bool LineSensorClass::getInvertedReadings()
 	return _InvertedReadings;
 }
 
+
 /** @brief Set sensor resolution.
  *  @param value int, Resolution value.
  *  @return Void.
@@ -144,6 +162,7 @@ int LineSensorClass::getResolution()
 {
 	return _Resolution;
 }
+
 
 /** @brief Read a single sensor.
  *  @param int sensor, Sensor index.
@@ -182,52 +201,6 @@ uint16_t LineSensorClass::readFiltredSensor(int sensorIndex)
 	return SensorValueL;
 }
 
-/** @brief Calibrate sensor array.
- *  @return bool, True when calibrated.
- */
-bool LineSensorClass::calibrate()
-{
-	bool CalibrationStateL = false;
-
-	if (_CalibrationFlagSize < _CalibrationSize)
-	{
-		for (int index = 0; index < _SensorsCount; index++)
-		{
-			_CalibrationSensorsValues[index][_CalibrationFlagSize] = _CurrenSensorValues[index];
-		}
-
-		_CalibrationFlagSize++;
-
-		CalibrationStateL = false;
-	}
-	else
-	{
-		Serial.println();
-		Serial.print("Minimum: ");
-		for (int index = 0; index < _SensorsCount; index++)
-		{
-			_MinimumSensorsValues[index] = minCalibrationValue(index);
-			Serial.print(_MinimumSensorsValues[index]);
-			Serial.print(", ");
-		}
-		Serial.println();
-
-		Serial.print("Maximum: ");
-		for (int index = 0; index < _SensorsCount; index++)
-		{
-			_MaximumSensorsValues[index] = maxCalibrationValue(index);
-			Serial.print(_MaximumSensorsValues[index]);
-			Serial.print(", ");
-		}
-		Serial.println();
-
-		_CalibrationFlagSize = 0;
-
-		CalibrationStateL = true;
-	}
-
-	return CalibrationStateL;
-}
 
 /** @brief Read line position.
  *  @return float, Weighted position determination.

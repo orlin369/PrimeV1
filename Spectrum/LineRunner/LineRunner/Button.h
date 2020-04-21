@@ -34,7 +34,7 @@ class ButtonClass
 
 #pragma region Methods
 
-	 void init(int pin, int debounce = 50, int mode = INPUT_PULLUP);
+	 void init(int pin, int debounce = 70, int mode = INPUT_PULLUP);
 
 	 void update();
 

@@ -58,18 +58,6 @@ uint16_t LineSensorClass::maxCalibrationValue(int sensorIndex)
 	return max;
 }
 
-/** @brief read a single sensor.
- *  @param int sensor, Sensor index.
- *  @return uint16_t, ADC filtred sensor value.
- */
-void LineSensorClass::readEntireArray()
-{
-	for (int index = 0; index < _SensorsCount; index++)
-	{
-		_CurrenSensorValues[index] = readFiltredSensor(index);
-	}
-}
-
 /** @brief Configure the sensor.
  *  @param sensorCount int, Sensor count.
  *  @param calibrationSize int, Calibration size count.
@@ -95,9 +83,6 @@ void LineSensorClass::config(int sensorCount, int calibrationSize)
 
 	/* @brief Maximum sensors values. */
 	_MaximumSensorsValues = new uint16_t[_SensorsCount];
-
-	/* @brief Actual sensors values. */
-	_ActualSensorsValues = new uint16_t[_SensorsCount];
 }
 
 /** @brief Set the read callback.
@@ -189,11 +174,9 @@ bool LineSensorClass::calibrate()
 
 	if (_CalibrationFlagSize < _CalibrationSize)
 	{
-		readEntireArray();
-
 		for (int index = 0; index < _SensorsCount; index++)
 		{
-			_CalibrationSensorsValues[index][_CalibrationFlagSize] = _CurrenSensorValues[index];
+			_CalibrationSensorsValues[index][_CalibrationFlagSize] = readFiltredSensor(index);
 		}
 
 		_CalibrationFlagSize++;
@@ -229,27 +212,26 @@ bool LineSensorClass::calibrate()
 	return CalibrationStateL;
 }
 
-/** @brief Read line position.
- *  @return float, Weighted position determination.
+/** @brief read a single sensor.
+ *  @param int sensor, Sensor index.
+ *  @return uint16_t, ADC filtred sensor value.
  */
-float LineSensorClass::readLinePosition()
+void LineSensorClass::readEntireArray(uint16_t * ActualSensorsValues)
 {
 	static int MaxValueL;
 	static int MinValueL;
 
-	_WeightedTotla = 0;
-	_Denominator = 0;
-	_LinePosition = 0;
-	_OnTheLineFlag = false;
-	
-	readEntireArray();
+	for (int index = 0; index < _SensorsCount; index++)
+	{
+		_CurrenSensorValues[index] = readFiltredSensor(index);
+	}
 
 	// Get minimums and maximums.
 	for (int index = 0; index < _SensorsCount; index++)
 	{
 		MaxValueL = max(_CurrenSensorValues[index], _MaximumSensorsValues[index]);
 		MinValueL = min(_CurrenSensorValues[index], _MinimumSensorsValues[index]);
-		_ActualSensorsValues[index] = map(_CurrenSensorValues[index], MinValueL, MaxValueL, 0, _Resolution);
+		ActualSensorsValues[index] = map(_CurrenSensorValues[index], MinValueL, MaxValueL, 0, _Resolution);
 
 		//Serial.print(ActualSensorsValues_g[index]);
 		//Serial.print(", ");
@@ -262,89 +244,23 @@ float LineSensorClass::readLinePosition()
 	// Extract minimums and maximums.
 	for (int index = 0; index < _SensorsCount; index++)
 	{
-		if (_ActualSensorsValues[index] < MinValueL)
+		if (ActualSensorsValues[index] < MinValueL)
 		{
-			MinValueL = _ActualSensorsValues[index];
+			MinValueL = ActualSensorsValues[index];
 		}
-		if (_ActualSensorsValues[index] > MaxValueL)
+		if (ActualSensorsValues[index] > MaxValueL)
 		{
-			MaxValueL = _ActualSensorsValues[index];
+			MaxValueL = ActualSensorsValues[index];
 		}
 	}
 
 	// Scale the sensor data to make it more dynamic.
 	for (int index = 0; index < _SensorsCount; index++)
 	{
-		_ActualSensorsValues[index] = map(_ActualSensorsValues[index], MinValueL, MaxValueL, 0, _Resolution);
+		ActualSensorsValues[index] = map(ActualSensorsValues[index], MinValueL, MaxValueL, 0, _Resolution);
 
-		Serial.print(_ActualSensorsValues[index]);
+		Serial.print(ActualSensorsValues[index]);
 		Serial.print(", ");
 	}
 	Serial.println();
-
-	// TODO: Call callback with new values of readed line.
-
-	// Determin line position.
-	for (uint8_t index = 0; index < _SensorsCount; index++)
-	{
-		uint16_t value = _ActualSensorsValues[index];
-
-		if (_InvertedReadings)
-		{
-			value = _Resolution - value;
-		}
-
-		// keep track of whether we see the line at all
-		if (value > 70)
-		{
-			_OnTheLineFlag = true;
-		}
-
-		// Only average in values that are above a noise threshold
-		if (value > 50)
-		{
-			_WeightedTotla += (uint32_t)value * (index * _Resolution);
-			_Denominator += value;
-		}
-	}
-
-	if (_OnTheLineFlag == false)
-	{
-		// If it last read to the left of center, return 0.
-		if (_LinePosition < (_SensorsCount - 1) * _Resolution / 2)
-		{
-			return 0;
-		}
-		// If it last read to the right of center, return the max.
-		else
-		{
-			return (_SensorsCount - 1) * _Resolution;
-		}
-	}
-
-	_LinePosition = _WeightedTotla / _Denominator;
-	return _LinePosition;
-}
-
-int LineSensorClass::getThreshold()
-{
-	int ThresholdL = 512;
-	int MaxL = 0;
-	int MinL = 0;
-
-	for (int index = 0; index < _SensorsCount; index++)
-	{
-		MaxL += _MaximumSensorsValues[index];
-	}
-	MaxL /= _SensorsCount;
-
-	for (int index = 0; index < _SensorsCount; index++)
-	{
-		MinL += _MinimumSensorsValues[index];
-	}
-	MinL /= _SensorsCount;
-
-	ThresholdL = (MaxL + MinL) / 2;
-
-	return ThresholdL;
 }
