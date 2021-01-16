@@ -75,7 +75,7 @@ void BridgeControllerClass::UpdateRightEncoder()
 }
 
 /** @brief Function to Move Forward/Backwards.
- *  @param mm float, Milimeters to be done.
+ *  @param mm float, Millimeters to be done.
  *  @param mspeed int, input value holding values of the PWM.
  *  @return Void.
  */
@@ -108,8 +108,9 @@ void BridgeControllerClass::MoveMM(float mm, int mspeed)
 	// To steps.
 	int steps = BridgeController.MM2Steps(abs(mm));
 
-	Serial.print("Steps: ");
-	Serial.println(steps);
+	DEBUGLOG("Steps: ");
+	DEBUGLOG(steps);
+	DEBUGLOG("\r\n");
 
 	// Go forward until step value is reached
 	while (steps > m_cntLeft && steps > m_cntRight)
@@ -142,7 +143,7 @@ void BridgeControllerClass::MoveMM(float mm, int mspeed)
 }
 
 /** @brief Function to Spin Right.
- *  @param mm float, Milimeters to be done.
+ *  @param mm float, Millimeters to be done.
  *  @param mspeed int, input value holding values of the PWM.
  *  @return Void.
  */
@@ -195,7 +196,7 @@ void BridgeControllerClass::SpinRight(float mm, int mspeed)
 }
 
 /** @brief Function to Spin Left.
- *  @param mm float, Milimeters to be done.
+ *  @param mm float, Millimeters to be done.
  *  @param mspeed int, input value holding values of the PWM.
  *  @return Void.
  */

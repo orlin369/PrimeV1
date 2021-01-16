@@ -32,7 +32,7 @@ SOFTWARE.
 void configure_debug_port()
 {
 
-#ifdef EANBLE_DEBUG_OUT
+#ifdef ENABLE_DEBUG_OUT
 
 	DEBUG_PORT.begin(DEBUG_PORT_BAUDRATE, SERIAL_8N1);
 	DEBUG_PORT.print("\r\n\r\n\r\n");
@@ -42,6 +42,6 @@ void configure_debug_port()
 	DEBUGLOG(__PRETTY_FUNCTION__);
 	DEBUGLOG("\r\n");
 
-#endif // EANBLE_DEBUG_OUT
+#endif // ENABLE_DEBUG_OUT
 
 }

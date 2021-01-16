@@ -45,7 +45,7 @@ SOFTWARE.
 
 #pragma region Definitions
 
-#ifdef EANBLE_DEBUG_OUT
+#ifdef ENABLE_DEBUG_OUT
 #define DEBUGLOG(...) DEBUG_PORT.print(__VA_ARGS__)
 #else
 #define DEBUGLOG(...)

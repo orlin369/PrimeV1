@@ -60,11 +60,11 @@ HCSR04 HCSR04_g;
 
 Servo USServo_g;
 
-bool SaftyFlag_g = false;
+bool SafetyFlag_g = false;
 
 /* @brief Line position value. */
 float LinePosition_g = 0;
-int Throtle_g = 512;
+int Throttle_g = 512;
 
 /* @brief Line position value. */
 float USDistance_g = 200;
@@ -76,13 +76,19 @@ FxTimer ControlLoopTimer_g = FxTimer();
 
 int UserButtonState_g;
 
+#ifdef MICRO_ROBOT_INTERFACE
+int MRMotorsEnable_g;
+int MRMotorLeft_g;
+int MRMotorRight_g;
+#endif // MICRO_ROBOT_INTERFACE
+
 #pragma endregion
 
 #pragma region Prototypes Functions
 
 /** @brief Read analog line sensor callback function.
  *  @param index int, Sensor index it exists in [0 to Sensor count -1].
- *  @return uint16_t Readed sensor data.
+ *  @return uint16_t Read sensor data.
  */
 uint16_t readSensor(int index);
 
@@ -92,12 +98,12 @@ uint16_t readSensor(int index);
  */
 LRData_t xy_to_lr(XYData_t xyData);
 
-/** @brief Interup Service Routine for handleng left encoder.
+/** @brief Interrupt Service Routine for handleng left encoder.
  *  @return Void.
  */
 void ISR_Left_Encoder();
 
-/** @brief Interup Service Routine for handleng right encoder.
+/** @brief Interrupt Service Routine for handleng right encoder.
  *  @return Void.
  */
 void ISR_Right_Encoder();
@@ -166,7 +172,13 @@ void setup()
 
 	ControlLoopTimer_g.setExpirationTime(100);
 
-	Serial.println("Started...");
+#ifdef MICRO_ROBOT_INTERFACE
+	pinMode(PIN_MOTORS_ENABLE, INPUT);
+	pinMode(PIN_MOTOR_LEFT_DIR, INPUT);
+	pinMode(PIN_MOTOR_RIGHT_DIR, INPUT);
+#endif // MICRO_ROBOT_INTERFACE
+
+	DEBUGLOG("Started...\r\n");
 }
 
 int calibrations = 0;
@@ -182,6 +194,41 @@ void loop()
 	UserButtonState_g = UserButton.getState();
 	// long microsec = HCSR04_g.timing();
 	// USDistance_g = HCSR04_g.convert(microsec, HCSR04::CM);
+
+#ifdef MICRO_ROBOT_INTERFACE
+	MRMotorsEnable_g = digitalRead(PIN_MOTORS_ENABLE);
+	MRMotorLeft_g = digitalRead(PIN_MOTOR_LEFT_DIR);
+	MRMotorRight_g = digitalRead(PIN_MOTOR_RIGHT_DIR);
+	
+	if (MRMotorsEnable_g == HIGH)
+	{
+		if (MRMotorLeft_g == HIGH)
+		{
+			LRData_g.L = 128;
+		}
+		else
+		{
+			LRData_g.L = -128;
+		}
+
+		if (MRMotorRight_g == HIGH)
+		{
+			LRData_g.R = 128;
+		}
+		else
+		{
+			LRData_g.R = -128;
+		}
+
+		BridgeController.MoveSpeed(LRData_g.L, LRData_g.R);
+	}
+	else
+	{
+		BridgeController.MoveSpeed(0, 0);
+	}
+#endif // MICRO_ROBOT_INTERFACE
+
+
 	if (UserButtonState_g == LOW)
 	{
 		sing(PIN_USER_BUZZER, NOTE_C6, 12);
@@ -191,7 +238,7 @@ void loop()
 	{
 		if (UserButtonState_g == LOW)
 		{
-			Serial.println("Begin calibration.");
+			DEBUGLOG("Begin calibration.\r\n");
 			AppStateFlag_g = AppplicationState::CalibrateSensors;
 			return;
 		}
@@ -201,7 +248,7 @@ void loop()
 		if (UserButtonState_g == LOW)
 		{
 			AppStateFlag_g = AppplicationState::WaitForStart;
-			Serial.println("Manual stoped calibration.");
+			DEBUGLOG("Manual stoped calibration.\r\n");
 			return;
 		}
 
@@ -216,7 +263,7 @@ void loop()
 		}
 		else
 		{
-			Serial.println("Calibration ready.");
+			DEBUGLOG("Calibration ready.\r\n");
 			calibrations = 0;
 			AppStateFlag_g = AppplicationState::WaitForStart;
 			sing(PIN_USER_BUZZER, NOTE_C6, 8);
@@ -229,15 +276,15 @@ void loop()
 	{
 		if (UserButtonState_g == LOW)
 		{
-			Serial.print("Starting.");
+			DEBUGLOG("Starting.");
 			for (uint8_t Index = 0; Index < 3; Index++)
 			{
 				sing(PIN_USER_BUZZER, NOTE_C4, 12);
-				Serial.print('.');
+				DEBUGLOG('.');
 				delay(1000);
 			}
 
-			Serial.println();
+			DEBUGLOG("\r\n");
 			sing(PIN_USER_BUZZER, NOTE_C6, 12);
 			AppStateFlag_g = AppplicationState::Run;
 			return;
@@ -247,15 +294,15 @@ void loop()
 	{
 		if (UserButtonState_g == LOW)
 		{
-			AppStateFlag_g = AppplicationState::SaftyStop;
-			Serial.println("Manual safty stop activate.");
+			AppStateFlag_g = AppplicationState::SafetyStop;
+			DEBUGLOG("Manual safety stop activate.\r\n");
 			return;
 		}
 
-		if (USDistance_g < SAFTY_DISTANCE)
+		if (USDistance_g < SAFETY_DISTANCE)
 		{
-			AppStateFlag_g = AppplicationState::SaftyStop;
-			Serial.println("Safty STOP activated by front sensor.");
+			AppStateFlag_g = AppplicationState::SafetyStop;
+			DEBUGLOG("Safety STOP activated by front sensor.\r\n");
 			return;
 		}
 
@@ -264,52 +311,52 @@ void loop()
 
 		if (LinePosition_g > 1000)
 		{
-			AppStateFlag_g = AppplicationState::SaftyStop;
-			Serial.println("Safty STOP activated.");
+			AppStateFlag_g = AppplicationState::SafetyStop;
+			DEBUGLOG("Safety STOP activated.\r\n");
 			return;
 		}
 
-		Throtle_g = analogRead(PIN_THROTLE);
-		if (Throtle_g < 512 + 20 && Throtle_g > 512 - 20)
+		Throttle_g = analogRead(PIN_THROTTLE);
+		if (Throttle_g < 512 + 20 && Throttle_g > 512 - 20)
 		{
-			Throtle_g = 512;
+			Throttle_g = 512;
 		}
 		XYData_g.X = map(LinePosition_g, 700, 0, 0, 1023);
-		XYData_g.Y = Throtle_g;
+		XYData_g.Y = Throttle_g;
 
 		// Convert X and  data to Left and Right PWM data.
 		LRData_g = xy_to_lr(XYData_g);
 
-		Serial.println();
-		Serial.print("Line: ");
-		Serial.println(LinePosition_g);
-		Serial.print("Wheels: ");
-		Serial.print(LRData_g.L);
-		Serial.print(" ");
-		Serial.print(LRData_g.R);
-		Serial.println();
+		DEBUGLOG("\r\n");
+		DEBUGLOG("Line: ");
+		DEBUGLOG(LinePosition_g);
+		DEBUGLOG("Wheels: ");
+		DEBUGLOG(LRData_g.L);
+		DEBUGLOG(" ");
+		DEBUGLOG(LRData_g.R);
+		DEBUGLOG("\r\n");
 		
 		// Controll the servo.
-		USServo_g.write(map(LinePosition_g, 700, 0, 60, 120));
+		// USServo_g.write(map(LinePosition_g, 700, 0, 60, 120));
 
 		// Control the robot.
 		BridgeController.MoveSpeed(LRData_g.L, LRData_g.R);
 
 		delay(100);
 	}
-	else if (AppStateFlag_g == AppplicationState::SaftyStop)
+	else if (AppStateFlag_g == AppplicationState::SafetyStop)
 	{
 		if (UserButtonState_g == LOW)
 		{
-			SaftyFlag_g = false;
+			SafetyFlag_g = false;
 			AppStateFlag_g = AppplicationState::WaitForStart;
-			Serial.println("Safty STOP cleared.");
+			DEBUGLOG("Safety STOP cleared.\r\n");
 			return;
 		}
 
-		if (SaftyFlag_g == false)
+		if (SafetyFlag_g == false)
 		{
-			SaftyFlag_g = true;
+			SafetyFlag_g = true;
 			BridgeController.MoveSpeed(0, 0);
 			sing(PIN_USER_BUZZER, NOTE_C6, 12);
 			return;
@@ -321,14 +368,14 @@ void loop()
 
 /** @brief Read analog line sensor callback function.
  *  @param index int, Sensor index it exists in [0 to Sensor count -1].
- *  @return uint16_t Readed sensor data.
+ *  @return uint16_t Read sensor data.
  */
 uint16_t readSensor(int index)
 {
 	return analogRead(AnalogPins_g[index]);
 }
 
-/** @brief Interup Service Routine for handleng left encoder.
+/** @brief Interrupt Service Routine for handleng left encoder.
  *  @return Void.
  */
 void ISR_Left_Encoder()
@@ -336,7 +383,7 @@ void ISR_Left_Encoder()
 	BridgeController.UpdateLeftEncoder();
 }
 
-/** @brief Interup Service Routine for handleng right encoder.
+/** @brief Interrupt Service Routine for handleng right encoder.
  *  @return Void.
  */
 void ISR_Right_Encoder()
@@ -430,7 +477,7 @@ LRData_t xy_to_lr(XYData_t xyData)
 	LRDataL.L = 0;
 	LRDataL.R = 0;
 
-	// Aquire the analog input for X and Y.
+	// Acquire the analog input for X and Y.
 	// Then rescale the 0..1023 range to -255..255 range.
 	ThrottleL = (512 - xyData.Y) / 2;
 	DirectionL = -(512 - xyData.X) / 2;

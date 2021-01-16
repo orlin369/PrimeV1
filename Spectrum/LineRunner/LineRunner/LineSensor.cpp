@@ -33,27 +33,27 @@ SOFTWARE.
  */
 void LineSensorClass::init(int sensorCount)
 {
-	_SensorsCount = sensorCount;
+	m_sensorsCount = sensorCount;
 
 	/* @brief Average sensors values. */
-	_CurrenSensorValues = new uint16_t[_SensorsCount];
+	m_curSensorsValues = new uint16_t[m_sensorsCount];
 
 	/* @brief Minimum sensors values. */
-	_MinimumSensorsValues = new uint16_t[_SensorsCount];
+	m_minSensorsValues = new uint16_t[m_sensorsCount];
 
 	/* @brief Maximum sensors values. */
-	_MaximumSensorsValues = new uint16_t[_SensorsCount];
+	m_maxSensorsValues = new uint16_t[m_sensorsCount];
 
 	/* @brief Actual sensors values. */
-	_ActualSensorsValues = new uint16_t[_SensorsCount];
+	m_actSensorsValues = new uint16_t[m_sensorsCount];
 
 	// Init
-	for (uint8_t index = 0; index < _SensorsCount; index++)
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
 	{
-		_CurrenSensorValues[index] = 0;
-		_MinimumSensorsValues[index] = 1023;
-		_MaximumSensorsValues[index] = 0;
-		_ActualSensorsValues[index] = 0;
+		m_curSensorsValues[index] = 0;
+		m_minSensorsValues[index] = 1023;
+		m_maxSensorsValues[index] = 0;
+		m_actSensorsValues[index] = 0;
 	}
 }
 
@@ -63,9 +63,9 @@ void LineSensorClass::init(int sensorCount)
  */
 void LineSensorClass::update()
 {
-	for (int index = 0; index < _SensorsCount; index++)
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
 	{
-		_CurrenSensorValues[index] = readFiltredSensor(index);
+		m_curSensorsValues[index] = readFiltredSensor(index);
 	}
 }
 
@@ -74,46 +74,90 @@ void LineSensorClass::update()
  */
 void LineSensorClass::calibrate()
 {
+	static uint16_t MaxValueL;
+	static uint16_t MinValueL;
 
-	for (int index = 0; index < _SensorsCount; index++)
+	// Find minimums and maximums.
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
 	{
-		_CurrenSensorValues[index] = readFiltredSensor(index);
+		m_curSensorsValues[index] = readFiltredSensor(index);
 
-		if (_CurrenSensorValues[index] < _MinimumSensorsValues[index])
+		if (m_curSensorsValues[index] < m_minSensorsValues[index])
 		{
-			_MinimumSensorsValues[index] = _CurrenSensorValues[index];
+			m_minSensorsValues[index] = m_curSensorsValues[index];
 		}
 
-		if (_CurrenSensorValues[index] > _MaximumSensorsValues[index])
+		if (m_curSensorsValues[index] > m_maxSensorsValues[index])
 		{
-			_MaximumSensorsValues[index] = _CurrenSensorValues[index];
+			m_maxSensorsValues[index] = m_curSensorsValues[index];
 		}
 	}
 
-	Serial.println();
-	Serial.print("Current: ");
-	for (int index = 0; index < _SensorsCount; index++)
+	// Clamp and scale to resolution.
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
 	{
-		Serial.print(_CurrenSensorValues[index]);
-		Serial.print(", ");
+		MaxValueL = max(m_curSensorsValues[index], m_maxSensorsValues[index]);
+		MinValueL = min(m_curSensorsValues[index], m_minSensorsValues[index]);
+		m_actSensorsValues[index] = map(m_curSensorsValues[index], MinValueL, MaxValueL, 0, m_resolution);
 	}
-	Serial.println();
 
-	Serial.print("Minimum: ");
-	for (int index = 0; index < _SensorsCount; index++)
-	{
-		Serial.print(_MinimumSensorsValues[index]);
-		Serial.print(", ");
-	}
-	Serial.println();
+	// Reuse max and min values, so clear it.
+	MinValueL = m_resolution;
+	MaxValueL = 0;
 
-	Serial.print("Maximum: ");
-	for (int index = 0; index < _SensorsCount; index++)
+	// Extract minimums and maximums from local resolution.
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
 	{
-		Serial.print(_MaximumSensorsValues[index]);
-		Serial.print(", ");
+		if (m_actSensorsValues[index] < MinValueL)
+		{
+			MinValueL = m_actSensorsValues[index];
+		}
+		if (m_actSensorsValues[index] > MaxValueL)
+		{
+			MaxValueL = m_actSensorsValues[index];
+		}
 	}
-	Serial.println();
+
+	// Scale and make it to dynamic range.
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
+	{
+		m_actSensorsValues[index] = map(m_actSensorsValues[index], MinValueL, MaxValueL, 0, m_resolution);
+	}
+
+	DEBUGLOG("\r\n");
+	DEBUGLOG("Actual: ");
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
+	{
+		DEBUGLOG(m_actSensorsValues[index]);
+		DEBUGLOG(", ");
+	}
+	DEBUGLOG("\r\n");
+
+
+	DEBUGLOG("\r\n");
+	DEBUGLOG("Current: ");
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
+	{
+		DEBUGLOG(m_curSensorsValues[index]);
+		DEBUGLOG(", ");
+	}
+	DEBUGLOG("\r\n");
+
+	DEBUGLOG("Minimum: ");
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
+	{
+		DEBUGLOG(m_minSensorsValues[index]);
+		DEBUGLOG(", ");
+	}
+	DEBUGLOG("\r\n");
+
+	DEBUGLOG("Maximum: ");
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
+	{
+		DEBUGLOG(m_maxSensorsValues[index]);
+		DEBUGLOG(", ");
+	}
+	DEBUGLOG("\r\n");
 }
 
 
@@ -134,7 +178,7 @@ void LineSensorClass::setCbReadSensor(uint16_t(*callback)(int))
  */
 void LineSensorClass::setInvertedReadings(bool value)
 {
-	_InvertedReadings = value;
+	m_invertedReadings = value;
 }
 
 /** @brief Get inverted readings flag.
@@ -142,9 +186,8 @@ void LineSensorClass::setInvertedReadings(bool value)
  */
 bool LineSensorClass::getInvertedReadings()
 {
-	return _InvertedReadings;
+	return m_invertedReadings;
 }
-
 
 /** @brief Set sensor resolution.
  *  @param value int, Resolution value.
@@ -152,7 +195,7 @@ bool LineSensorClass::getInvertedReadings()
  */
 void LineSensorClass::setResolution(int value)
 {
-	_Resolution = value;
+	m_resolution = value;
 }
 
 /** @brief Get gets resolution value.
@@ -160,7 +203,7 @@ void LineSensorClass::setResolution(int value)
  */
 int LineSensorClass::getResolution()
 {
-	return _Resolution;
+	return m_resolution;
 }
 
 
@@ -186,7 +229,7 @@ uint16_t LineSensorClass::readFiltredSensor(int sensorIndex)
 {
 	uint16_t SensorValueL = 0;
 
-	for (int index = 0; index < _AvgFilterCount; index++)
+	for (int index = 0; index < m_avgFilterCount; index++)
 	{
 		SensorValueL += readSensor(sensorIndex);
 	}
@@ -196,9 +239,32 @@ uint16_t LineSensorClass::readFiltredSensor(int sensorIndex)
 	//	return 0;
 	//}
 
-	SensorValueL /= _AvgFilterCount;
+	SensorValueL /= m_avgFilterCount;
 
 	return SensorValueL;
+}
+
+/** @brief Create histeresis binarization.
+ *  @param int sensor, Sensor index.
+ *  @return bool, Threshold level.
+ */
+SensorState LineSensorClass::treshSensor(int sensorIndex)
+{
+	SensorState StateL = S_Z;
+
+	if (UPPER_HIGH <= m_curSensorsValues[sensorIndex]
+		&& UPPER_LOW >= m_curSensorsValues[sensorIndex])
+	{
+		StateL = S_HIGH;
+	}
+
+	if (LOWER_HIGH <= m_curSensorsValues[sensorIndex]
+		&& LOWER_LOW >= m_curSensorsValues[sensorIndex])
+	{
+		StateL = S_LOW;
+	}
+
+	return StateL;
 }
 
 
@@ -207,94 +273,51 @@ uint16_t LineSensorClass::readFiltredSensor(int sensorIndex)
  */
 float LineSensorClass::getLinePosition()
 {
-	static int MaxValueL;
-	static int MinValueL;
-
-	_WeightedTotla = 0;
-	_Denominator = 0;
-	_LinePosition = 0;
-	_OnTheLineFlag = false;
-
-	// Get minimums and maximums.
-	for (int index = 0; index < _SensorsCount; index++)
-	{
-		MaxValueL = max(_CurrenSensorValues[index], _MaximumSensorsValues[index]);
-		MinValueL = min(_CurrenSensorValues[index], _MinimumSensorsValues[index]);
-		_ActualSensorsValues[index] = map(_CurrenSensorValues[index], MinValueL, MaxValueL, 0, _Resolution);
-
-		//Serial.print(ActualSensorsValues_g[index]);
-		//Serial.print(", ");
-	}
-	//Serial.println();
-
-	MinValueL = _Resolution;
-	MaxValueL = 0;
-
-	// Extract minimums and maximums.
-	for (int index = 0; index < _SensorsCount; index++)
-	{
-		if (_ActualSensorsValues[index] < MinValueL)
-		{
-			MinValueL = _ActualSensorsValues[index];
-		}
-		if (_ActualSensorsValues[index] > MaxValueL)
-		{
-			MaxValueL = _ActualSensorsValues[index];
-		}
-	}
-
-	// Scale the sensor data to make it more dynamic.
-	for (int index = 0; index < _SensorsCount; index++)
-	{
-		_ActualSensorsValues[index] = map(_ActualSensorsValues[index], MinValueL, MaxValueL, 0, _Resolution);
-
-		Serial.print(_ActualSensorsValues[index]);
-		Serial.print(", ");
-	}
-	Serial.println();
-
-	// TODO: Call callback with new values of readed line.
+	m_weightedTotal = 0;
+	m_denominator = 0;
+	m_linePosition = 0;
+	m_onTheLineFlag = false;
 
 	// Determin line position.
-	for (uint8_t index = 0; index < _SensorsCount; index++)
+	for (uint8_t index = 0; index < m_sensorsCount; index++)
 	{
-		uint16_t value = _ActualSensorsValues[index];
+		uint16_t value = m_actSensorsValues[index];
 
-		if (_InvertedReadings)
+		if (m_invertedReadings)
 		{
-			value = _Resolution - value;
+			value = m_resolution - value;
 		}
 
 		// keep track of whether we see the line at all
 		if (value > 70)
 		{
-			_OnTheLineFlag = true;
+			m_onTheLineFlag = true;
 		}
 
 		// Only average in values that are above a noise threshold
 		if (value > 50)
 		{
-			_WeightedTotla += (uint32_t)value * (index * _Resolution);
-			_Denominator += value;
+			m_weightedTotal += (uint32_t)value * (index * m_resolution);
+			m_denominator += value;
 		}
 	}
 
-	if (_OnTheLineFlag == false)
+	if (m_onTheLineFlag == false)
 	{
 		// If it last read to the left of center, return 0.
-		if (_LinePosition < (_SensorsCount - 1) * _Resolution / 2)
+		if (m_linePosition < (m_sensorsCount - 1) * m_resolution / 2)
 		{
 			return 0;
 		}
 		// If it last read to the right of center, return the max.
 		else
 		{
-			return (_SensorsCount - 1) * _Resolution;
+			return (m_sensorsCount - 1) * m_resolution;
 		}
 	}
 
-	_LinePosition = _WeightedTotla / _Denominator;
-	return _LinePosition;
+	m_linePosition = m_weightedTotal / m_denominator;
+	return m_linePosition;
 }
 
 LineSensorClass LineSensor;

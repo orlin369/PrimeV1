@@ -146,9 +146,10 @@ float HCSR04::unbiasedStdDev(float value, size_t bufNum)
 				}
 
 				result = sqrt(sum / (buf->length - 1));
-				//Serial.print(bufNum);
-				//Serial.print(" : ");
-				//Serial.println(result);
+				//DEBUGLOG(bufNum);
+				//DEBUGLOG(" : ");
+				//DEBUGLOG(result);
+				//DEBUGLOG("\r\n");
 			}
 		}
 	}

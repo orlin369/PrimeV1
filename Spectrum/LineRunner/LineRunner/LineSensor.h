@@ -35,6 +35,21 @@ SOFTWARE.
 #include "WProgram.h"
 #endif
 
+#include "DebugPort.h"
+
+#define UPPER_HIGH 100
+#define UPPER_LOW 80
+#define LOWER_HIGH 20
+#define LOWER_LOW 0
+
+/** @brief Logic state description enum. */
+enum SensorState : uint8_t
+{
+	S_LOW = 0U, ///< Logic LOW
+	S_HIGH, ///< Logic HIGH
+	S_Z, ///< High impedance.
+};
+
 class LineSensorClass
 {
 private:
@@ -45,46 +60,65 @@ private:
 	uint16_t(*callbackGetSensorValue)(int);
 
 	/** @brief Line position */
-	float _LinePosition;
+	float m_linePosition;
 
 	/** @brief Weighted total. */
-	uint32_t _WeightedTotla = 0;
+	uint32_t m_weightedTotal = 0;
 
 	/** @brief Denominator */
-	uint16_t _Denominator = 0;
+	uint16_t m_denominator = 0;
 
 	/** @brief Sensors count. */
-	uint8_t _SensorsCount = 8;
+	uint8_t m_sensorsCount = 8;
 
 	/** @brief Average filter count. */
-	uint8_t _AvgFilterCount = 5;
+	uint8_t m_avgFilterCount = 5;
 
 	/** @brief Sensor resolution. */
-	uint32_t _Resolution = 100;
+	uint32_t m_resolution = 100;
 
 	/* @brief On the line flag. */
-	bool _OnTheLineFlag = false;
+	bool m_onTheLineFlag = false;
 
 	/* @brief Inverted readings flag. */
-	bool _InvertedReadings = false;
+	bool m_invertedReadings = false;
 
 	/* @brief Average sensors values. */
-	uint16_t * _CurrenSensorValues;
+	uint16_t * m_curSensorsValues;
 
 	/* @brief Minimum sensors values. */
-	uint16_t * _MinimumSensorsValues;
+	uint16_t * m_minSensorsValues;
 
 	/* @brief Maximum sensors values. */
-	uint16_t * _MaximumSensorsValues;
+	uint16_t * m_maxSensorsValues;
 
 	/* @brief Actual sensors values. */
-	uint16_t * _ActualSensorsValues;
+	uint16_t * m_actSensorsValues;
 
 #pragma endregion
 
 protected:
 
 #pragma region Methods
+
+
+	/** @brief Read a single sensor.
+	 *  @param int sensor, Sensor index.
+	 *  @return uint16_t, ADC sensor value.
+	 */
+	uint16_t readSensor(int sensorIndex);
+
+	/** @brief Read a single sensor.
+	 *  @param int sensor, Sensor index.
+	 *  @return uint16_t, ADC filtred sensor value.
+	 */
+	uint16_t readFiltredSensor(int sensorIndex);
+
+	/** @brief Create histeresis binarization.
+	 *  @param int sensor, Sensor index.
+	 *  @return bool, Tresh hold level.
+	 */
+	SensorState treshSensor(int sensorIndex);
 
 #pragma endregion
 
@@ -126,17 +160,6 @@ public:
 	 */
 	int getResolution();
 
-	/** @brief Read a single sensor.
-	 *  @param int sensor, Sensor index.
-	 *  @return uint16_t, ADC sensor value.
-	 */
-	uint16_t readSensor(int sensorIndex);
-
-	/** @brief Read a single sensor.
-	 *  @param int sensor, Sensor index.
-	 *  @return uint16_t, ADC filtred sensor value.
-	 */
-	uint16_t readFiltredSensor(int sensorIndex);
 
 	/** @brief read a single sensor.
 	 *  @param int sensor, Sensor index.

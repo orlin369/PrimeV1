@@ -44,7 +44,7 @@ enum AppplicationState : uint8_t
 	CalibrateSensors, ///< Calibrate the sensors.
 	WaitForStart, ///< Wait for start.
 	Run, ///< Run the robot.
-	SaftyStop, ///< Safty stop the robot.
+	SafetyStop, ///< Safety stop the robot.
 };
 
 #pragma endregion

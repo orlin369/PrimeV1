@@ -35,6 +35,8 @@ SOFTWARE.
 	#include "WProgram.h"
 #endif
 
+#include "DebugPort.h"
+
 typedef struct
 {
 	uint8_t LeftDir; ///< Left direction pin.
@@ -74,8 +76,8 @@ class BridgeControllerClass
 
 #pragma region Methods
 
-	/** @brief Function to convert from milimeters to steps.
-	 *  @param mm float, Milimeters distence.
+	/** @brief Function to convert from millimeters to steps.
+	 *  @param mm float, Millimeters distance.
 	 *  @return encoder counts.
 	 */
 	unsigned int MM2Steps(float mm);
@@ -103,21 +105,21 @@ class BridgeControllerClass
 	void UpdateRightEncoder();
 
 	/** @brief Function to Move Forward/Backwards.
-	 *  @param mm float, Milimeters to be done.
+	 *  @param mm float, Millimeters to be done.
 	 *  @param mspeed int, input value holding values of the PWM.
 	 *  @return Void.
 	 */
 	void MoveMM(float mm, int mspeed);
 
 	/** @brief Function to Spin Right.
-	 *  @param mm float, Milimeters to be done.
+	 *  @param mm float, Millimeters to be done.
 	 *  @param mspeed int, input value holding values of the PWM.
 	 *  @return Void.
 	 */
 	void SpinRight(float mm, int mspeed);
 
 	/** @brief Function to Spin Left.
-	 *  @param mm float, Milimeters to be done.
+	 *  @param mm float, Millimeters to be done.
 	 *  @param mspeed int, input value holding values of the PWM.
 	 *  @return Void.
 	 */
