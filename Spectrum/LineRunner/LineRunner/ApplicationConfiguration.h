@@ -37,10 +37,10 @@ SOFTWARE.
 
 #pragma region General
 
-#define EANBLE_DEBUG_OUT
+#define ENABLE_DEBUG_OUT
 
-/** @brief Safty distance in CM.. */
-#define SAFTY_DISTANCE 20.0
+/** @brief Safety distance in CM.. */
+#define SAFETY_DISTANCE 20.0
 
 #pragma endregion
 
@@ -89,7 +89,7 @@ SOFTWARE.
 #define PIN_USER_BUTTON 12
 #define PIN_USER_LED 13
 
-#define PIN_THROTLE A3
+#define PIN_THROTTLE A3
 
 #pragma endregion
 
@@ -101,7 +101,7 @@ SOFTWARE.
 
 #pragma endregion
 
-#pragma region Wheels & Diferential Model
+#pragma region Wheels & Differential Model
 
 // Float for number of slots in encoder disk
 // Change to match value of encoder disk
@@ -111,27 +111,37 @@ SOFTWARE.
 
 #define DISTANCE_BETWEEN_WHEELS 130.00F
 
-
-
 #pragma endregion
 
 #pragma region Debug Port
 
-#ifdef EANBLE_DEBUG_OUT
+#ifdef ENABLE_DEBUG_OUT
 
 #define DEBUG_PORT Serial
 
-#define DEBUG_PORT_BAUDRATE 115200
+#define DEBUG_PORT_BAUDRATE 9600
 
-#endif // EANBLE_DEBUG_OUT
+#endif // ENABLE_DEBUG_OUT
 
 #pragma endregion
-
 
 #define DEBOUNCE_TIME 100
 
 /** @brief Dead zone of the joystick. */
 #define DEAD_ZONE 10
+
+#define MICRO_ROBOT_INTERFACE
+
+#ifdef MICRO_ROBOT_INTERFACE
+
+#define PIN_MOTORS_ENABLE 23
+
+#define PIN_MOTOR_LEFT_DIR 25
+
+#define PIN_MOTOR_RIGHT_DIR 27
+
+#endif // MICRO_ROBOT_INTERFACE
+
 
 #endif
 
