@@ -55,7 +55,9 @@ const uint8_t AnalogPins_g[LINE_SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3,
 /* @brief Application state flag. */
 uint8_t AppStateFlag_g = AppplicationState::WaitForCalibration;
 
-/* @brief Ultrasonic servo controller. */
+ButtonClass UserButton_g;
+
+/* @brief Ultrasonic sensor. */
 HCSR04 HCSR04_g;
 
 Servo USServo_g;
@@ -126,6 +128,8 @@ void setup()
 {
 	configure_debug_port();
 
+	UserButton_g.init(PIN_USER_BUTTON, DEBOUNCE_TIME);
+
 	// Setup the motor driver.
 	BridgeModel_t model = {
 		PIN_LEFT_DIRECTION,
@@ -164,7 +168,7 @@ void setup()
 	digitalWrite(PIN_USER_LED, LOW);
 
 	// Initialize the button.
-	UserButton.init(PIN_USER_BUTTON);
+	UserButton_g.init(PIN_USER_BUTTON);
 
 	//
 	init_sing(PIN_USER_BUZZER);
@@ -189,9 +193,9 @@ int calibrations = 0;
  */
 void loop()
 {
-	UserButton.update();
+	UserButton_g.update();
 	LineSensor.update();
-	UserButtonState_g = UserButton.getState();
+	UserButtonState_g = UserButton_g.getState();
 	// long microsec = HCSR04_g.timing();
 	// USDistance_g = HCSR04_g.convert(microsec, HCSR04::CM);
 

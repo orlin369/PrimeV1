@@ -34,7 +34,6 @@ SOFTWARE.
 #include "DebugPort.h"
 #include "LineSensor.h"
 #include "HCSR04.h"
-#include <HCSR04.h>
 #include "LRData.h"
 #include "XYData.h"
 #include "Sing.h"

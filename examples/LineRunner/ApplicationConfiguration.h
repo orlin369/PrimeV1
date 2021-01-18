@@ -37,8 +37,6 @@ SOFTWARE.
 
 #pragma region General
 
-#define ENABLE_DEBUG_OUT
-
 /** @brief Safety distance in CM.. */
 #define SAFETY_DISTANCE 20.0
 
@@ -113,18 +111,6 @@ SOFTWARE.
 
 #pragma endregion
 
-#pragma region Debug Port
-
-#ifdef ENABLE_DEBUG_OUT
-
-#define DEBUG_PORT Serial
-
-#define DEBUG_PORT_BAUDRATE 9600
-
-#endif // ENABLE_DEBUG_OUT
-
-#pragma endregion
-
 #define DEBOUNCE_TIME 100
 
 /** @brief Dead zone of the joystick. */
@@ -141,7 +127,6 @@ SOFTWARE.
 #define PIN_MOTOR_RIGHT_DIR 27
 
 #endif // MICRO_ROBOT_INTERFACE
-
 
 #endif
 

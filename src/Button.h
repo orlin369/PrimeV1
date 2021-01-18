@@ -46,8 +46,4 @@ class ButtonClass
 
 };
 
-/** @brief Instance of the /h-Bridge controller. */
-extern ButtonClass UserButton;
-
 #endif
-

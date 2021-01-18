@@ -4,7 +4,7 @@
 
 #include "Button.h"
 
-void ButtonClass::init(int pin, int debounce, int mode)
+void ButtonClass::init(int pin, int debounce = 70, int mode = INPUT_PULLUP)
 {
 	m_pin = pin;
 	m_debaunce = debounce;
@@ -49,5 +49,3 @@ void ButtonClass::setDebounce(int debaunce)
 {
 	m_debaunce = debaunce;
 }
-
-ButtonClass UserButton;

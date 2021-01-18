@@ -38,12 +38,15 @@ SOFTWARE.
 
 #pragma region Headers
 
-/* Application configuration. */
-#include "ApplicationConfiguration.h"
-
 #pragma endregion
 
 #pragma region Definitions
+
+#define ENABLE_DEBUG_OUT
+
+#define DEBUG_PORT Serial
+
+#define DEBUG_PORT_BAUDRATE 9600
 
 #ifdef ENABLE_DEBUG_OUT
 #define DEBUGLOG(...) DEBUG_PORT.print(__VA_ARGS__)
