@@ -1,5 +1,0 @@
-{
-    "sketch": "2D_MazeRunner.ino",
-    "board": "arduino:avr:mega",
-    "configuration": "cpu=atmega2560"
-}

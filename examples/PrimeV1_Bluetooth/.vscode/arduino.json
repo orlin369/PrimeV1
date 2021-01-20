@@ -1,5 +1,0 @@
-{
-    "sketch": "PrimeV1_Bluetooth.ino",
-    "board": "arduino:avr:mega",
-    "configuration": "cpu=atmega2560"
-}

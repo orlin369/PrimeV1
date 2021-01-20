@@ -1,5 +1,5 @@
 {
     "board": "arduino:avr:mega",
     "configuration": "cpu=atmega2560",
-    "sketch": "examples\\LineRunner\\LineRunner.ino"
+    "sketch": "examples\\2D_MazeRunner\\2D_MazeRunner.ino"
 }
