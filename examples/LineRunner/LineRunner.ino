@@ -24,16 +24,23 @@ SOFTWARE.
 
 */
 
+/** @brief Safety distance in CM.. */
+#define SAFETY_DISTANCE 20.0
+
+/** @brief Dead zone of the joystick. */
+#define DEAD_ZONE 10
+
+/** @brief Throttle input. */
+#define PIN_THROTTLE A3
+
 #pragma region Headers
 
-#include <Servo.h>
+#include "AppplicationState.h"
 
+#include "PrimeV1.h"
 #include "Button.h"
-#include "FxTimer.h"
 #include "BridgeController.h"
 #include "DebugPort.h"
-#include "ApplicationConfiguration.h"
-#include "AppplicationState.h"
 #include "LineSensor.h"
 #include "HCSR04.h"
 #include "LRData.h"
@@ -41,64 +48,61 @@ SOFTWARE.
 #include "Sing.h"
 #include "Notes.h"
 
+#include <Servo.h>
+
 #pragma endregion
 
 #pragma region Constants
 
-const uint8_t AnalogPins_g[LINE_SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7, PIN_LS_8 };
+const uint8_t PinsLineSensor_g[LINE_SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7, PIN_LS_8 };
 
 #pragma endregion
 
 #pragma region Variables
 
-
 /* @brief Application state flag. */
 uint8_t AppStateFlag_g = AppplicationState::WaitForCalibration;
 
+/* @brief User button. */
 ButtonClass UserButton_g;
 
 /* @brief Ultrasonic sensor. */
 HCSR04 HCSR04_g;
 
+/* @brief Ultrasonic servo axis. */
 Servo USServo_g;
 
-bool SafetyFlag_g = false;
+/* @brief User button state. */
+int UserButtonState_g;
+
+/* @brief Ultra sonic sensore distance value. */
+float USDistance_g = 200;
 
 /* @brief Line position value. */
 float LinePosition_g = 0;
+
+/* @brief Throttle value. */
 int Throttle_g = 512;
 
-/* @brief Line position value. */
-float USDistance_g = 200;
+/* @brief Safety flag. */
+bool SafetyFlag_g = false;
 
+/* @brief XY data value. */
 XYData_t XYData_g;
+
+/* @brief LR data value. */
 LRData_t LRData_g;
-
-FxTimer ControlLoopTimer_g = FxTimer();
-
-int UserButtonState_g;
-
-#ifdef MICRO_ROBOT_INTERFACE
-int MRMotorsEnable_g;
-int MRMotorLeft_g;
-int MRMotorRight_g;
-#endif // MICRO_ROBOT_INTERFACE
 
 #pragma endregion
 
 #pragma region Prototypes Functions
 
 /** @brief Read analog line sensor callback function.
+ * 
  *  @param index int, Sensor index it exists in [0 to Sensor count -1].
  *  @return uint16_t Read sensor data.
  */
 uint16_t readSensor(int index);
-
-/** @brief Transform [X, Y] coordinates to [L, R] PWM values.
- *  @param xyData X and Y "joystick" data.
- *  @return LRData_t Left and Right PWM transformation values.
- */
-LRData_t xy_to_lr(XYData_t xyData);
 
 /** @brief Interrupt Service Routine for handleng left encoder.
  *  @return Void.
@@ -110,19 +114,27 @@ void ISR_Left_Encoder();
  */
 void ISR_Right_Encoder();
 
-void sing_startup();
-
-/** @brief Control the H bridge for motor control.
- *  @param lrdata LRData_t, input value holding values of the PWM.
+/** @brief Sing the startup song.
  *  @return Void.
  */
-void control_bridge(LRData_t lrdata);
+void sing_startup();
+
+/** @brief Play the animation dance.
+ *  @return Void.
+ */
+void play_animation();
+
+/** @brief Transform [X, Y] coordinates to [L, R] PWM values.
+ *  @param xyData X and Y "joystick" data.
+ *  @return LRData_t Left and Right PWM transformation values.
+ */
+LRData_t xy_to_lr(XYData_t xyData);
 
 #pragma endregion
 
-
-/** @brief The setup function runs once when you press reset or power the board.
- *  @return Void.
+/**
+ * @brief The setup function runs once when you press reset or power the board.
+ * 
  */
 void setup()
 {
@@ -174,64 +186,24 @@ void setup()
 	init_sing(PIN_USER_BUZZER);
 	sing_startup();
 
-	ControlLoopTimer_g.setExpirationTime(100);
-
-#ifdef MICRO_ROBOT_INTERFACE
-	pinMode(PIN_MOTORS_ENABLE, INPUT);
-	pinMode(PIN_MOTOR_LEFT_DIR, INPUT);
-	pinMode(PIN_MOTOR_RIGHT_DIR, INPUT);
-#endif // MICRO_ROBOT_INTERFACE
-
 	DEBUGLOG("Started...\r\n");
 }
 
-int calibrations = 0;
-
-
-/** @brief Main loop.
- *  @return Void.
+/**
+ * @brief Main loop.
+ * 
  */
 void loop()
 {
+	static int CalibartionsL = 0;
+
 	UserButton_g.update();
-	LineSensor.update();
 	UserButtonState_g = UserButton_g.getState();
+
+	LineSensor.update();
+
 	// long microsec = HCSR04_g.timing();
 	// USDistance_g = HCSR04_g.convert(microsec, HCSR04::CM);
-
-#ifdef MICRO_ROBOT_INTERFACE
-	MRMotorsEnable_g = digitalRead(PIN_MOTORS_ENABLE);
-	MRMotorLeft_g = digitalRead(PIN_MOTOR_LEFT_DIR);
-	MRMotorRight_g = digitalRead(PIN_MOTOR_RIGHT_DIR);
-	
-	if (MRMotorsEnable_g == HIGH)
-	{
-		if (MRMotorLeft_g == HIGH)
-		{
-			LRData_g.L = 128;
-		}
-		else
-		{
-			LRData_g.L = -128;
-		}
-
-		if (MRMotorRight_g == HIGH)
-		{
-			LRData_g.R = 128;
-		}
-		else
-		{
-			LRData_g.R = -128;
-		}
-
-		BridgeController.MoveSpeed(LRData_g.L, LRData_g.R);
-	}
-	else
-	{
-		BridgeController.MoveSpeed(0, 0);
-	}
-#endif // MICRO_ROBOT_INTERFACE
-
 
 	if (UserButtonState_g == LOW)
 	{
@@ -259,16 +231,16 @@ void loop()
 		digitalWrite(PIN_USER_LED, LOW);
 		digitalWrite(PIN_USER_LED, HIGH);
 
-		if (calibrations < LINE_SENSORS_CALIBRATION_SIZE)
+		if (CalibartionsL < LINE_SENSORS_CALIBRATION_SIZE)
 		{
 			LineSensor.calibrate();
-			calibrations++;
+			CalibartionsL++;
 			sing(PIN_USER_BUZZER, NOTE_C4, 8);
 		}
 		else
 		{
 			DEBUGLOG("Calibration ready.\r\n");
-			calibrations = 0;
+			CalibartionsL = 0;
 			AppStateFlag_g = AppplicationState::WaitForStart;
 			sing(PIN_USER_BUZZER, NOTE_C6, 8);
 		}
@@ -371,12 +343,13 @@ void loop()
 #pragma region Functions
 
 /** @brief Read analog line sensor callback function.
+ * 
  *  @param index int, Sensor index it exists in [0 to Sensor count -1].
  *  @return uint16_t Read sensor data.
  */
 uint16_t readSensor(int index)
 {
-	return analogRead(AnalogPins_g[index]);
+	return analogRead(PinsLineSensor_g[index]);
 }
 
 /** @brief Interrupt Service Routine for handleng left encoder.
