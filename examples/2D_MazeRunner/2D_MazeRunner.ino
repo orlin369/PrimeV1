@@ -22,15 +22,22 @@ SOFTWARE.
 
 */
 
+/** @brief Safety distance in CM.. */
+#define SAFETY_DISTANCE 20.0
+
+/** @brief Dead zone of the joystick. */
+#define DEAD_ZONE 10
+
+/** @brief Throttle input. */
+#define PIN_THROTTLE A3
+
 #pragma region Headers
 
-#include <Servo.h>
-
-// Include the TimerOne Library from Paul Stoffregen
-#include "TimerOne.h"
-
-#include "ApplicationConfiguration.h"
 #include "AppplicationState.h"
+
+#include "PrimeV1.h"
+#include "Button.h"
+#include "BridgeController.h"
 #include "DebugPort.h"
 #include "LineSensor.h"
 #include "HCSR04.h"
@@ -38,7 +45,8 @@ SOFTWARE.
 #include "XYData.h"
 #include "Sing.h"
 #include "Notes.h"
-#include "MotorDirection.h"
+
+#include <Servo.h>
 
 #pragma endregion
 
@@ -69,51 +77,38 @@ enum Crossroad : uint8_t
 #pragma endregion
 
 #pragma region Variables
-
-bool SaftyFlag_g = false;
-
 /* @brief Application state flag. */
 uint8_t AppStateFlag_g = AppplicationState::WaitForCalibration;
 
-/* @brief The current reading from the input pin. */
+/* @brief User button. */
+ButtonClass UserButton_g;
+
+/* @brief Ultrasonic sensor. */
+HCSR04 HCSR04_g;
+
+/* @brief Ultrasonic servo axis. */
+Servo USServo_g;
+
+/* @brief User button state. */
 int UserButtonState_g;
 
-/* @brief The previous reading from the input pin. */
-int lastButtonState = HIGH;
-
-/* @brief The last time the output pin was toggled. */
-unsigned long lastDebounceTime = 0;
+/* @brief Ultra sonic sensore distance value. */
+float USDistance_g = 20;
 
 /* @brief Line position value. */
 float LinePosition_g = 0;
 
-/* @brief Line position value. */
-int USDistance_g = 0;
+/* @brief Throttle value. */
+int Throttle_g = 512;
 
-uint8_t MotorDirectionLeft_g = MotorDirection::CW;
-uint8_t MotorDirectionRight_g = MotorDirection::CW;
+/* @brief Safety flag. */
+bool SafetyFlag_g = false;
 
-// Integers for pulse counters
-volatile unsigned int CounterLeft_g = 0;
-volatile unsigned int CounterRight_g = 0;
-
-volatile float RPMLeft_g = 0;
-volatile float RPMRight_g = 0;
-
+/* @brief XY data value. */
 XYData_t XYData_g;
+
+/* @brief LR data value. */
 LRData_t LRData_g;
-
-/* @brief Ultrasonic servo controller. */
-Servo USServo_g;
-
-/* @brief Ultrasonic servo controller. */
-LineSensorClass QTR8_g;
-
-/* @brief HC-SR04 ultra sonic sensor. */
-HCSR04Class HCSR04_g;
-
-/* @brief Actual sensors values. */
-uint16_t ActualSensorsValues_g[LINE_SENSORS_COUNT];
 
 uint8_t CrossroadType_g = Crossroad::Straight;
 
@@ -121,14 +116,9 @@ uint8_t CrossroadType_g = Crossroad::Straight;
 
 #pragma region Prototypes Functions
 
-/** @brief Read the User button.
- *  @return Void.
- */
-void read_user_btn();
-
 /** @brief Read analog line sensor callback function.
  *  @param index int, Sensor index it exists in [0 to Sensor count -1].
- *  @return uint16_t Readed sensor data.
+ *  @return uint16_t Read sensor data.
  */
 uint16_t readSensor(int index);
 
@@ -143,31 +133,15 @@ float readLinePosition();
  */
 LRData_t xy_to_lr(XYData_t xyData);
 
-/** @brief Interup Service Routine for Left encoder to flag when changed has ocured.
+/** @brief Interrupt Service Routine for Left encoder to flag when changed has ocured.
  *  @return Void.
  */
 void ISR_Left_Encoder();
 
-/** @brief Interup Service Routine for Right encoder to flag when changed has ocured.
+/** @brief Interrupt Service Routine for Right encoder to flag when changed has ocured.
  *  @return Void.
  */
 void ISR_Right_Encoder();
-
-/** @brief Interup Service Routine for Timer One to flag when changed has ocured.
- *  @return Void.
- */
-void ISR_timerone();
-
-/** @brief Initialize the H bridge for motor control.
- *  @return Void.
- */
-void init_bridge();
-
-/** @brief Control the H bridge for motor control.
- *  @param lrdata LRData_t, input value holding values of the PWM.
- *  @return Void.
- */
-void control_bridge(LRData_t lrdata);
 
 #pragma endregion
 
@@ -178,12 +152,33 @@ void setup()
 {
 	configure_debug_port();
 
-	// Initialize the motoro controller.
-	init_bridge();
+	UserButton_g.init(PIN_USER_BUTTON, DEBOUNCE_TIME);
 
-	// Set line sensor.
-	QTR8_g.setCbReadSensor(readSensor);
-	QTR8_g.config(LINE_SENSORS_COUNT, LINE_SENSORS_CALIBRATION_SIZE);
+	// Setup the motor driver.
+	BridgeModel_t model = {
+		PIN_LEFT_DIRECTION,
+		PIN_RIGHT_DIRECTION,
+		PIN_LEFT_SPEED,
+		PIN_RIGHT_SPEED,
+		WHEEL_DIAMETER,
+		DISTANCE_BETWEEN_WHEELS,
+		ENCODER_TRACKS
+	};
+
+	// Initialize the motor controller.
+	BridgeController.init(&model);
+	// Attach the Interrupts to their ISR's
+	// Increase counter 1 when speed sensor pin goes High.
+	attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), ISR_Left_Encoder, RISING);
+	// Increase counter 2 when speed sensor pin goes High.
+	attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), ISR_Right_Encoder, RISING);
+	// play the test animation.
+	//play_animation();
+
+	// Initialize the line sensor.
+	LineSensor.init(LINE_SENSORS_COUNT);
+	LineSensor.setCbReadSensor(readSensor);
+	LineSensor.setInvertedReadings(false);
 	
 	// Set ultrasonic servo.
 	//USServo_g.attach(PIN_US_SERVO);
@@ -196,21 +191,11 @@ void setup()
 	pinMode(PIN_USER_LED, OUTPUT);
 	digitalWrite(PIN_USER_LED, LOW);
 
-	pinMode(PIN_USER_BUTTON, INPUT_PULLUP);
-
-	config_sing(PIN_USER_BUZZER);
-	sing(PIN_USER_BUZZER, NOTE_C3, 12);
-	sing(PIN_USER_BUZZER, NOTE_C4, 12);
-	sing(PIN_USER_BUZZER, NOTE_C5, 12);
-	sing(PIN_USER_BUZZER, NOTE_C6, 12);
-
-	//attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), ISR_Left_Encoder, RISING);  // Increase counter 1 when speed sensor pin goes High
-	//attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), ISR_Right_Encoder, RISING);  // Increase counter 2 when speed sensor pin goes High
 	//
-	//Timer1.initialize(TIMER1_DELAY); // set timer for 1sec
-	//Timer1.attachInterrupt(ISR_timerone); // Enable the timer
+	init_sing(PIN_USER_BUZZER);
+	sing_startup();
 
-	Serial.println("Stated...");
+	DEBUGLOG("Stated...");
 }
 
 /** @brief .
@@ -218,97 +203,112 @@ void setup()
  */
 void loop()
 {
-	read_user_btn();
+	static int CalibartionsL = 0;
 
-	digitalWrite(PIN_USER_LED, HIGH);
+	UserButton_g.update();
+	UserButtonState_g = UserButton_g.getState();
 
+	LineSensor.update();
+
+	// long microsec = HCSR04_g.timing();
+	// USDistance_g = HCSR04_g.convert(microsec, HCSR04::CM);
+
+	// Wait for calibration.
 	if (AppStateFlag_g == AppplicationState::WaitForCalibration)
 	{
 		if (UserButtonState_g == LOW)
 		{
 			UserButtonState_g = HIGH;
-			Serial.println("Bagin calibration.");
+			DEBUGLOG("Begin calibration.\r\n");
 			AppStateFlag_g = AppplicationState::CalibrateSensors;
 
 			sing(PIN_USER_BUZZER, NOTE_C6, 12);
 		}
 	}
+
+	// Calibrate the line sensor.
 	else if (AppStateFlag_g == AppplicationState::CalibrateSensors)
 	{
 		digitalWrite(PIN_USER_LED, LOW);
 		digitalWrite(PIN_USER_LED, HIGH);
 
-		if (QTR8_g.calibrate())
+		if (CalibartionsL < LINE_SENSORS_CALIBRATION_SIZE)
 		{
+			LineSensor.calibrate();
+			CalibartionsL++;
 			sing(PIN_USER_BUZZER, NOTE_C4, 8);
-			AppStateFlag_g = AppplicationState::WaitForStart;
 		}
 		else
 		{
+			DEBUGLOG("Calibration ready.\r\n");
+			CalibartionsL = 0;
+			AppStateFlag_g = AppplicationState::WaitForStart;
 			sing(PIN_USER_BUZZER, NOTE_C6, 8);
-			delay(1000);
 		}
 
 		digitalWrite(PIN_USER_LED, LOW);
 	}
+
+	// Wait for start.
 	else if (AppStateFlag_g == AppplicationState::WaitForStart)
 	{
 		if (UserButtonState_g == LOW)
 		{
-			Serial.print("Starting");
+			DEBUGLOG("Starting");
 			for (uint8_t Index = 0; Index < 3; Index++)
 			{
 				sing(PIN_USER_BUZZER, NOTE_C4, 12);
-				Serial.print('.');
+				DEBUGLOG('.');
 				delay(1000);
 			}
-			Serial.println();
+			DEBUGLOG("\r\n");
 			UserButtonState_g = HIGH;
 			AppStateFlag_g = AppplicationState::ReadSensors;
 			sing(PIN_USER_BUZZER, NOTE_C6, 12);
 		}
 	}
+
+	// Read the line sensors.
 	else if (AppStateFlag_g == AppplicationState::ReadSensors)
-	{
-		// 
-		//USDistance_g = HCSR04_g.ReadCM();
-		//DEBUGLOG("US distance: ");
-		//DEBUGLOG(USDistance_g);
-		//DEBUGLOG("\r\n");
-
-		// Read line sensor.
-		QTR8_g.readEntireArray(ActualSensorsValues_g);
-
-		if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] > LINE_THRESHOLD) || (ActualSensorsValues_g[RIGHT_FLAG_INDEX] > LINE_THRESHOLD))
+	{	
+		// Cross or turn time.
+		if ((LineSensor.thresholdSensor(LEFT_FLAG_INDEX) == SensorState::S_HIGH) || (LineSensor.thresholdSensor(RIGHT_FLAG_INDEX) == SensorState::S_HIGH))
 		{
-			if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] > LINE_THRESHOLD) && (ActualSensorsValues_g[RIGHT_FLAG_INDEX] > LINE_THRESHOLD))
+			// T - Type cross road.
+			if ((LineSensor.thresholdSensor(LEFT_FLAG_INDEX) == SensorState::S_HIGH) && (LineSensor.thresholdSensor(RIGHT_FLAG_INDEX) == SensorState::S_HIGH))
 			{
 				CrossroadType_g = Crossroad::TType;
+				AppStateFlag_g = AppplicationState::TakeAction;
 			}
-			else if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] > LINE_THRESHOLD) && (ActualSensorsValues_g[RIGHT_FLAG_INDEX] <= LINE_THRESHOLD))
+			// Left type cross road.
+			else if ((LineSensor.thresholdSensor(LEFT_FLAG_INDEX) == SensorState::S_HIGH) && (LineSensor.thresholdSensor(RIGHT_FLAG_INDEX) == SensorState::S_LOW))
 			{
 				CrossroadType_g = Crossroad::LeftTurn;
+				AppStateFlag_g = AppplicationState::TakeAction;
 			}
-			else if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] <= LINE_THRESHOLD) && (ActualSensorsValues_g[RIGHT_FLAG_INDEX] > LINE_THRESHOLD))
+			// Right type cross road.
+			else if ((LineSensor.thresholdSensor(LEFT_FLAG_INDEX) == SensorState::S_LOW) && (LineSensor.thresholdSensor(RIGHT_FLAG_INDEX) == SensorState::S_HIGH))
 			{
 				CrossroadType_g = Crossroad::RightTurn;
+				AppStateFlag_g = AppplicationState::TakeAction;
 			}
 		}
-		else if ((ActualSensorsValues_g[LEFT_FLAG_INDEX] <= LINE_THRESHOLD) && (ActualSensorsValues_g[RIGHT_FLAG_INDEX] <= LINE_THRESHOLD))
-		{
-			AppStateFlag_g = AppplicationState::TakeAction;
-		}
 
-		if (USDistance_g > 10 && USDistance_g <= 40)
+		if (USDistance_g >= 10 && USDistance_g <= 40)
 		{
-			AppStateFlag_g = AppplicationState::SaftyStop;
+			AppStateFlag_g = AppplicationState::SafetyStop;
 		}
 	}
 	else if (AppStateFlag_g == AppplicationState::TakeAction)
 	{
+		// 1. Get heading.
+		// 2. Add decided value for the turn.
+		// 3. Make make the turn.
+		// 4. Clear the Crossed type action by setting it to Straight.
+		// 5. Change the app state flag. 
 		if (CrossroadType_g == Crossroad::TType)
 		{
-			// Power applyd to the wheels.
+			// Power applied to the wheels.
 			XYData_g.Y = 0;
 			XYData_g.X = 0;
 
@@ -316,46 +316,46 @@ void loop()
 			LRData_g = xy_to_lr(XYData_g);
 
 			// Control the robot.
-			control_bridge(LRData_g);
+			BridgeController.MoveSpeed(LRData_g.L, LRData_g.R);
 
 			// TODO: Make left turn.
-			Serial.println("TType .....");
+			DEBUGLOG("TType .....\r\n");
 			CrossroadType_g = Crossroad::Straight;
 		}
 		else if (CrossroadType_g == Crossroad::LeftTurn)
 		{
-			turn_left();
-			Serial.println("LeftTurn .....");
+			//turn_left();
+			DEBUGLOG("LeftTurn .....\r\n");
 			CrossroadType_g = Crossroad::Straight;
 		}
 		else if (CrossroadType_g == Crossroad::RightTurn)
 		{
-			turn_right();
-			Serial.println("RightTurn .....");
+			//turn_right();
+			DEBUGLOG("RightTurn .....\r\n");
 			CrossroadType_g = Crossroad::Straight;
 		}
 		else if(CrossroadType_g == Crossroad::Straight)
 		{
-			LinePosition_g = readLinePosition(ActualSensorsValues_g);
-			Serial.print("Line: ");
-			Serial.println(LinePosition_g);
+			LinePosition_g = LineSensor.getLinePosition();
+			DEBUGLOG("Line: ");
+			DEBUGLOG(LinePosition_g);
 
 			if (LinePosition_g > 1000)
 			{
-				Serial.println("Safty STOP activated.");
-				AppStateFlag_g = AppplicationState::SaftyStop;
+				DEBUGLOG("Safety STOP activated.\r\n");
+				AppStateFlag_g = AppplicationState::SafetyStop;
 				return;
 			}
 
-			// Power applyd to the wheels.
-			XYData_g.Y = analogRead(PIN_THROTLE);
+			// Power applied to the wheels.
+			XYData_g.Y = analogRead(PIN_THROTTLE);
 			XYData_g.X = map(LinePosition_g, 0, 500, 0, 1023);
 
 			// Convert X and  data to Left and Right PWM data.
 			LRData_g = xy_to_lr(XYData_g);
 
 			// Control the robot.
-			control_bridge(LRData_g);
+			BridgeController.MoveSpeed(LRData_g.L, LRData_g.R);
 
 			//
 			delay(500);
@@ -364,23 +364,24 @@ void loop()
 		// Controll the servo.
 		//USServo_g.write(map(LinePosition_g, 0, 700, 0, 180));
 
+		CrossroadType_g = Crossroad::Straight;
 		AppStateFlag_g = AppplicationState::ReadSensors;
 	}
-	else if (AppStateFlag_g == AppplicationState::SaftyStop)
+	else if (AppStateFlag_g == AppplicationState::SafetyStop)
 	{
 		analogWrite(PIN_LEFT_SPEED, 0);
 		analogWrite(PIN_RIGHT_SPEED, 0);
-		if (SaftyFlag_g == false)
+		if (SafetyFlag_g == false)
 		{
-			SaftyFlag_g = true;
+			SafetyFlag_g = true;
 			sing(PIN_USER_BUZZER, NOTE_C6, 12);
 		}
 
 		if (UserButtonState_g == LOW)
 		{
-			SaftyFlag_g = false;
+			SafetyFlag_g = false;
 			UserButtonState_g = HIGH;
-			Serial.println("Safty STOP cleared.");
+			DEBUGLOG("Safety STOP cleared.");
 			AppStateFlag_g = AppplicationState::WaitForStart;
 			sing(PIN_USER_BUZZER, NOTE_C6, 12);
 		}
@@ -391,111 +392,13 @@ void loop()
 
 #pragma region Functions
 
-/** @brief Read the User button.
- *  @return Void.
- */
-void read_user_btn()
-{
-	// read the state of the switch into a local variable:
-	int reading = digitalRead(PIN_USER_BUTTON);
-
-	// check to see if you just pressed the button
-	// (i.e. the input went from LOW to HIGH), and you've waited long enough
-	// since the last press to ignore any noise:
-
-	// If the switch changed, due to noise or pressing:
-	if (reading != lastButtonState) {
-		// reset the debouncing timer
-		lastDebounceTime = millis();
-	}
-
-	if ((millis() - lastDebounceTime) > DEBOUNCE_TIME) {
-		// whatever the reading is at, it's been there for longer than the debounce
-		// delay, so take it as the actual current state:
-
-		// if the button state has changed:
-		if (reading != UserButtonState_g) {
-			UserButtonState_g = reading;
-		}
-	}
-
-	// save the reading. Next time through the loop, it'll be the lastButtonState:
-	lastButtonState = reading;
-}
-
 /** @brief Read analog line sensor callback function.
  *  @param index int, Sensor index it exists in [0 to Sensor count -1].
- *  @return uint16_t Readed sensor data.
+ *  @return uint16_t Read sensor data.
  */
 uint16_t readSensor(int index)
 {
 	return analogRead(PinsLineSensor_g[index]);
-}
-
-/** @brief Read line position.
- *  @return float, Weighted position determination.
- */
-float readLinePosition(uint16_t * ActualSensorsValues)
-{
-	/** @brief Weighted total. */
-	static uint32_t _WeightedTotla;
-
-	/** @brief Denominator */
-	static uint16_t _Denominator;
-
-	/** @brief Line position */
-	static float _LinePosition;
-
-	/* @brief On the line flag. */
-	static bool _OnTheLineFlag;
-
-	_WeightedTotla = 0;
-	_Denominator = 0;
-	_LinePosition = 0;
-	_OnTheLineFlag = false;
-
-	// TODO: Call callback with new values of readed line.
-
-	// Determin line position.
-	for (uint8_t index = 1; index < 6; index++)
-	{
-		uint16_t value = ActualSensorsValues[index];
-		
-		if (QTR8_g.getInvertedReadings())
-		{
-			value = QTR8_g.getResolution() - value;
-		}
-
-		// keep track of whether we see the line at all
-		if (value > 70)
-		{
-			_OnTheLineFlag = true;
-		}
-
-		// Only average in values that are above a noise threshold
-		if (value > 50)
-		{
-			_WeightedTotla += (uint32_t)value * (index * QTR8_g.getResolution());
-			_Denominator += value;
-		}
-	}
-
-	if (_OnTheLineFlag == false)
-	{
-		// If it last read to the left of center, return 0.
-		if (_LinePosition < (6 - 1) * QTR8_g.getResolution() / 2)
-		{
-			return 0;
-		}
-		// If it last read to the right of center, return the max.
-		else
-		{
-			return (6 - 1) * QTR8_g.getResolution();
-		}
-	}
-
-	_LinePosition = _WeightedTotla / _Denominator;
-	return _LinePosition;
 }
 
 /** @brief Transform [X, Y] coordinates to [L, R] PWM values.
@@ -524,7 +427,7 @@ LRData_t xy_to_lr(XYData_t xyData)
 	LRDataL.L = 0;
 	LRDataL.R = 0;
 
-	// Aquire the analog input for X and Y.
+	// Acquire the analog input for X and Y.
 	// Then rescale the 0..1023 range to -255..255 range.
 	ThrottleL = (512 - xyData.Y) / 2;
 	DirectionL = -(512 - xyData.X) / 2;
@@ -550,222 +453,31 @@ LRData_t xy_to_lr(XYData_t xyData)
 	return LRDataL;
 }
 
-/** @brief Interup Service Routine for Left encoder to flag when changed has ocured.
+/** @brief Interrupt Service Routine for Left encoder to flag when changed has ocured.
  *  @return Void.
  */
 void ISR_Left_Encoder()
 {
-	if (MotorDirectionLeft_g == MotorDirection::CW)
-	{
-		CounterLeft_g++;
-	}
-	else if (MotorDirectionLeft_g == MotorDirection::CCW)
-	{
-		CounterLeft_g--;
-	}
+	BridgeController.UpdateLeftEncoder();
 }
 
-/** @brief Interup Service Routine for Right encoder to flag when changed has ocured.
+/** @brief Interrupt Service Routine for Right encoder to flag when changed has ocured.
  *  @return Void.
  */
 void ISR_Right_Encoder()
 {
-	if (MotorDirectionRight_g == MotorDirection::CW)
-	{
-		CounterRight_g++;
-	}
-	else if (MotorDirectionRight_g == MotorDirection::CCW)
-	{
-		CounterRight_g--;
-	}
+	BridgeController.UpdateRightEncoder();
 }
 
-/** @brief Interup Service Routine for Timer One to flag when changed has ocured.
+/** @brief Sing the startup song.
  *  @return Void.
  */
-void ISR_timerone()
+void sing_startup()
 {
-	Timer1.detachInterrupt();  // Stop the timer
-
-	Serial.print("Motor Speed Left: ");
-	RPMLeft_g = (CounterLeft_g / ENCODER_TRACKS) * 60.00;  // calculate RPM for Motor 1
-	Serial.print(RPMLeft_g);
-	Serial.print(" RPM - ");
-	CounterLeft_g = 0;  //  reset counter to zero
-
-	Serial.print("Motor Speed Right: ");
-	RPMRight_g = (CounterRight_g / ENCODER_TRACKS) * 60.00;  // calculate RPM for Motor 2
-	Serial.print(RPMRight_g);
-	Serial.println(" RPM");
-	CounterRight_g = 0;  //  reset counter to zero
-
-	Timer1.attachInterrupt(ISR_timerone);  // Enable the timer
-}
-
-/** @brief Initialize the H bridge for motor control.
- *  @return Void.
- */
-void init_bridge()
-{
-	// Setup the motor driver.
-	pinMode(PIN_LEFT_DIRECTION, OUTPUT);
-	pinMode(PIN_RIGHT_DIRECTION, OUTPUT);
-	pinMode(PIN_LEFT_SPEED, OUTPUT);
-	pinMode(PIN_RIGHT_SPEED, OUTPUT);
-	analogWrite(PIN_LEFT_SPEED, 0);
-	analogWrite(PIN_RIGHT_SPEED, 0);
-}
-
-/** @brief Control the H bridge for motor control.
- *  @param lrdata LRData_t, input value holding values of the PWM.
- *  @return Void.
- */
-void control_bridge(LRData_t lrdata)
-{
-	Serial.println();
-	Serial.print("Wheels: ");
-	Serial.print(lrdata.L);
-	Serial.print(" ");
-	Serial.print(lrdata.R);
-	Serial.println();
-
-	//return;
-
-	if (LRData_g.L > DEAD_ZONE)
-	{
-		digitalWrite(PIN_LEFT_DIRECTION, HIGH);
-		analogWrite(PIN_LEFT_SPEED, abs(LRData_g.L));
-	}
-	else if (LRData_g.L < -DEAD_ZONE)
-	{
-		digitalWrite(PIN_LEFT_DIRECTION, LOW);
-		analogWrite(PIN_LEFT_SPEED, abs(LRData_g.L));
-	}
-	else
-	{
-		analogWrite(PIN_LEFT_SPEED, 0);
-	}
-
-	if (LRData_g.R > DEAD_ZONE)
-	{
-		digitalWrite(PIN_RIGHT_DIRECTION, LOW);
-		analogWrite(PIN_RIGHT_SPEED, abs(LRData_g.R));
-	}
-	else if (LRData_g.R < -DEAD_ZONE)
-	{
-		digitalWrite(PIN_RIGHT_DIRECTION, HIGH);
-		analogWrite(PIN_RIGHT_SPEED, abs(LRData_g.R));
-	}
-	else
-	{
-		analogWrite(PIN_RIGHT_SPEED, 0);
-	}
-}
-
-void turn_left()
-{
-	DEBUGLOG("\r\n");
-	DEBUGLOG(__PRETTY_FUNCTION__);
-	DEBUGLOG("\r\n");
-	// 1. Stop.
-    // Power applyd to the wheels.
-	XYData_g.Y = 0;
-	XYData_g.X = 0;
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-
-	// 2. Move for some time forward.
-	// Power applyd to the wheels.
-	XYData_g.Y = map(128, -255, 255, 0, 1023);
-	XYData_g.X = 0;
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-	delay(2000);
-
-	// 3. Stop.
-	// Power applyd to the wheels.
-	XYData_g.Y = 0;
-	XYData_g.X = 0;
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-
-	// 4. Turn left for some time forward.
-	// Power applyd to the wheels.
-	XYData_g.Y = 0;
-	XYData_g.X = map(128, -255, 255, 0, 1023);
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-	delay(2000);
-
-	// 3. Stop.
-	// Power applyd to the wheels.
-	XYData_g.Y = 0;
-	XYData_g.X = 0;
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-}
-
-void turn_right()
-{
-	DEBUGLOG("\r\n");
-	DEBUGLOG(__PRETTY_FUNCTION__);
-	DEBUGLOG("\r\n");
-	// 1. Stop.
-	// Power applyd to the wheels.
-	XYData_g.Y = 0;
-	XYData_g.X = 0;
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-
-	// 2. Move for some time forward.
-	// Power applyd to the wheels.
-	XYData_g.Y = map(128, -255, 255, 0, 1023);
-	XYData_g.X = 0;
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-	delay(2000);
-
-	// 3. Stop.
-	// Power applyd to the wheels.
-	XYData_g.Y = 0;
-	XYData_g.X = 0;
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-
-	// 4. Turn left for some time forward.
-	// Power applyd to the wheels.
-	XYData_g.Y = 0;
-	XYData_g.X = map(-128, -255, 255, 0, 1023);
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
-	delay(2000);
-
-	// 3. Stop.
-	// Power applyd to the wheels.
-	XYData_g.Y = 0;
-	XYData_g.X = 0;
-	// Convert X and  data to Left and Right PWM data.
-	LRData_g = xy_to_lr(XYData_g);
-	// Control the robot.
-	control_bridge(LRData_g);
+	sing(PIN_USER_BUZZER, NOTE_C3, 12);
+	sing(PIN_USER_BUZZER, NOTE_C4, 12);
+	sing(PIN_USER_BUZZER, NOTE_C5, 12);
+	sing(PIN_USER_BUZZER, NOTE_C6, 12);
 }
 
 #pragma endregion
