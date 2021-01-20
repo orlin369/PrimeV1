@@ -24,23 +24,16 @@ SOFTWARE.
 
 */
 
-// ApplicationConfiguration.h
+// Notes.h
 
-#ifndef _APPLICATIONCONFIGURATION_h
-#define _APPLICATIONCONFIGURATION_h
+#ifndef _PRIME_V1_h
+#define _PRIME_V1_h
 
 #if defined(ARDUINO) && ARDUINO >= 100
-	#include "arduino.h"
+#include "arduino.h"
 #else
-	#include "WProgram.h"
+#include "WProgram.h"
 #endif
-
-#pragma region General
-
-/** @brief Safety distance in CM.. */
-#define SAFETY_DISTANCE 20.0
-
-#pragma endregion
 
 #pragma region GPIO Map
 
@@ -87,8 +80,6 @@ SOFTWARE.
 #define PIN_USER_BUTTON 12
 #define PIN_USER_LED 13
 
-#define PIN_THROTTLE A3
-
 #pragma endregion
 
 #pragma region Line Sensor
@@ -112,21 +103,6 @@ SOFTWARE.
 #pragma endregion
 
 #define DEBOUNCE_TIME 100
-
-/** @brief Dead zone of the joystick. */
-#define DEAD_ZONE 10
-
-#define MICRO_ROBOT_INTERFACE
-
-#ifdef MICRO_ROBOT_INTERFACE
-
-#define PIN_MOTORS_ENABLE 23
-
-#define PIN_MOTOR_LEFT_DIR 25
-
-#define PIN_MOTOR_RIGHT_DIR 27
-
-#endif // MICRO_ROBOT_INTERFACE
 
 #endif
 
