@@ -248,7 +248,7 @@ uint16_t LineSensorClass::readFiltredSensor(int sensorIndex)
  *  @param int sensor, Sensor index.
  *  @return bool, Threshold level.
  */
-SensorState LineSensorClass::treshSensor(int sensorIndex)
+SensorState LineSensorClass::thresholdSensor(int sensorIndex)
 {
 	SensorState StateL = S_Z;
 
@@ -266,7 +266,6 @@ SensorState LineSensorClass::treshSensor(int sensorIndex)
 
 	return StateL;
 }
-
 
 /** @brief Read line position.
  *  @return float, Weighted position determination.

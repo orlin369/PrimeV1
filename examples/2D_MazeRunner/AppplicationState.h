@@ -43,7 +43,7 @@ enum AppplicationState : uint8_t
 	WaitForStart, ///< Wait for start.
 	ReadSensors, ///< Read sensors.
 	TakeAction, ///< Take robot actions.
-	SaftyStop, ///< Safty stop the robot.
+	SafetyStop, ///< Safety stop the robot.
 };
 
 #pragma endregion

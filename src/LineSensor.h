@@ -114,12 +114,6 @@ protected:
 	 */
 	uint16_t readFiltredSensor(int sensorIndex);
 
-	/** @brief Create histeresis binarization.
-	 *  @param int sensor, Sensor index.
-	 *  @return bool, Tresh hold level.
-	 */
-	SensorState treshSensor(int sensorIndex);
-
 #pragma endregion
 
 public:
@@ -177,6 +171,12 @@ public:
 	 */
 	float getLinePosition();
 
+	/** @brief Create histeresis binarization.
+	 *  @param int sensor, Sensor index.
+	 *  @return bool, Threshhold level.
+	 */
+	SensorState thresholdSensor(int sensorIndex);
+
 #pragma endregion
 
 };
@@ -185,4 +185,3 @@ public:
 extern LineSensorClass LineSensor;
 
 #endif
-
