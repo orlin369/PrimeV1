@@ -22,17 +22,10 @@ SOFTWARE.
 
 */
 
-/** @brief Safety distance in CM.. */
-#define SAFETY_DISTANCE 20.0
-
-/** @brief Dead zone of the joystick. */
-#define DEAD_ZONE 10
-
-/** @brief Throttle input. */
-#define PIN_THROTTLE A3
-
 #pragma region Headers
 
+#include "ApplicationConfiguration.h"
+#include "CrossRoadState.h"
 #include "AppplicationState.h"
 
 #include "PrimeV1.h"
@@ -52,64 +45,102 @@ SOFTWARE.
 
 #pragma region Definitions
 
+/**
+ * @brief Left flag index.
+ * 
+ */
 #define LEFT_FLAG_INDEX 0
 
+/**
+ * @brief Right flag index.
+ * 
+ */
 #define RIGHT_FLAG_INDEX 7
 
 #pragma endregion
 
 #pragma region Constants
 
+/**
+ * @brief Pins for the line folowing sensor.
+ * 
+ */
 const uint8_t PinsLineSensor_g[LINE_SENSORS_COUNT] = { PIN_LS_1, PIN_LS_2, PIN_LS_3, PIN_LS_4, PIN_LS_5, PIN_LS_6, PIN_LS_7, PIN_LS_8 };
 
 #pragma endregion
 
-#pragma region Enums
-
-enum Crossroad : uint8_t
-{
-	Straight = 0U,
-	LeftTurn,
-	RightTurn,
-	TType
-};
-
-#pragma endregion
-
 #pragma region Variables
-/* @brief Application state flag. */
+
+/**
+ * @brief Application state flag.
+ * 
+ */
 uint8_t AppStateFlag_g = AppplicationState::WaitForCalibration;
 
-/* @brief User button. */
+/**
+ * @brief User button.
+ * 
+ */
 ButtonClass UserButton_g;
 
-/* @brief Ultrasonic sensor. */
+/**
+ * @brief Ultrasonic sensor.
+ * 
+ */
 HCSR04 HCSR04_g;
 
-/* @brief Ultrasonic servo axis. */
+/**
+ * @brief Ultrasonic servo axis.
+ * 
+ */
 Servo USServo_g;
 
-/* @brief User button state. */
+/**
+ * @brief User button state.
+ * 
+ */
 int UserButtonState_g;
 
-/* @brief Ultra sonic sensore distance value. */
-float USDistance_g = 20;
+/**
+ * @brief Ultra sonic sensore distance value.
+ * 
+ */
+float USDistance_g = SAFETY_DISTANCE;
 
-/* @brief Line position value. */
+/**
+ * @brief Line position value.
+ * 
+ */
 float LinePosition_g = 0;
 
-/* @brief Throttle value. */
+/**
+ * @brief Throttle value.
+ * 
+ */
 int Throttle_g = 512;
 
-/* @brief Safety flag. */
+/**
+ * @brief Safety flag.
+ * 
+ */
 bool SafetyFlag_g = false;
 
-/* @brief XY data value. */
+/**
+ * @brief XY data value.
+ * 
+ */
 XYData_t XYData_g;
 
-/* @brief LR data value. */
+/**
+ * @brief @brief LR data value.
+ * 
+ */
 LRData_t LRData_g;
 
+/**
+ * @brief Detected cross type. 
+ * 
+ */
 uint8_t CrossroadType_g = Crossroad::Straight;
 
 #pragma endregion
