@@ -1,5 +1,6 @@
 {
-    "board": "arduino:avr:mega",
     "configuration": "cpu=atmega2560",
-    "sketch": "examples\\MicroRobot\\MicroRobot.ino"
+    "board": "arduino:avr:mega",
+    "port": "COM10",
+    "sketch": "examples\\2D_MazeRunner\\2D_MazeRunner.ino"
 }
