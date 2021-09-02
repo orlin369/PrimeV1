@@ -85,6 +85,8 @@ dkms.conf
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+!.vscode/arduino.json
+!.vscode/c_cpp_properties.json
 .vscode/
 
 # End of https://www.toptal.com/developers/gitignore/api/c,c++,vscode
