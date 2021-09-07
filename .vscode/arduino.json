@@ -1,6 +1,5 @@
 {
+    "sketch": "..\\..\\Arduino\\libraries\\PrimeV1\\examples\\ATCmd\\ATCmd.ino",
     "configuration": "cpu=atmega2560",
-    "board": "arduino:avr:mega",
-    "port": "COM10",
-    "sketch": "examples\\2D_MazeRunner\\2D_MazeRunner.ino"
+    "board": "arduino:avr:mega"
 }
