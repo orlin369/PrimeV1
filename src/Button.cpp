@@ -7,7 +7,7 @@
 void ButtonClass::init(int pin, int debounce = 70, int mode = INPUT_PULLUP)
 {
 	m_pin = pin;
-	m_debaunce = debounce;
+	m_debounce = debounce;
 	pinMode(m_pin, mode);
 }
 
@@ -26,7 +26,7 @@ void ButtonClass::update()
 		m_lastDebounceTime = millis();
 	}
 
-	if ((millis() - m_lastDebounceTime) > m_debaunce) {
+	if ((millis() - m_lastDebounceTime) > m_debounce) {
 		// whatever the StateL is at, it's been there for longer than the debounce
 		// delay, so take it as the actual current state:
 
@@ -45,7 +45,7 @@ int ButtonClass::getState()
 	return m_state;
 }
 
-void ButtonClass::setDebounce(int debaunce)
+void ButtonClass::setDebounce(int debounce)
 {
-	m_debaunce = debaunce;
+	m_debounce = debounce;
 }

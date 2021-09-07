@@ -15,17 +15,34 @@ class ButtonClass
 
 #pragma region Variables
 
-	 int m_pin;
+	/**
+	 * @brief Pin that is responsible for the button.
+	 * 
+	 */
+	int m_pin;
 
-	 /* @brief The current reading from the input pin. */
+	 /**
+	  * @brief The current reading from the input pin.
+	  * 
+	  */
 	 int m_state;
 
-	 /* @brief The previous reading from the input pin. */
+	/**
+	 * @brief The previous reading from the input pin.
+	 * 
+	 */
 	 int m_lastState;
 
-	 int m_debaunce = 50;
+	/**
+	 * @brief Debounce time in [ms].
+	 * 
+	 */
+	 int m_debounce = 50;
 
-	 /* @brief The last time the output pin was toggled. */
+	 /**
+	  * @brief The last time the output pin was toggled.
+	  * 
+	  */
 	 unsigned long m_lastDebounceTime = 0;
 
 #pragma endregion
@@ -40,7 +57,7 @@ class ButtonClass
 
 	 int getState();
 
-	 void setDebounce(int debaunce);
+	 void setDebounce(int debounce);
 
 #pragma endregion
 
