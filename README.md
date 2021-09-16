@@ -30,11 +30,9 @@ The system provides modular robotics hardware that can be separated on a modular
 ## Line
 | Command | Syntax | Response | Result |
 |---------|:-------|:---------|:-------|
-|Calibrate the line sensor.|AT+SET+LINE+CALIBRATE|OK (Note 2)|The sensor values will be calibrate by local minimum and maximum of the trace.|
-|Get line sensor data.|AT+GET+LINE|d0 d2 d3 ... dn (Note 1)|Will read the line sensor data.|
-|Get line position.|AT+GET+LINE+POS|<-1.0 to 1.0>|This will be possible only if the sensor is calibrated correctly.|
-||AT+SET+LINE [ ]|||
-||AT+SET+LINE+RESET|||
+|Calibrate the line sensor.|AT+LINE+CALIBRATE|OK (Note 2)|The sensor values will be calibrate by local minimum and maximum of the trace.|
+|Get line sensor data.|AT+LINE|d0 d2 d3 ... dn (Note 1)|Will read the line sensor data.|
+|Get line position.|AT+LINE+POS|<-1.0 to 1.0>|This will be possible only if the sensor is calibrated correctly.|
 
 ## Ultra Sonic
 | Command | Syntax | Response | Result |
