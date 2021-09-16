@@ -567,10 +567,12 @@ void config_commands()
 {
 	SerialCommand CmdResetL(REQ_AT_RESET, cmd_reset_cb);
 	SerialCommand CmdModeL(REQ_AT_MODE, cmd_mode_cb);
+	SerialCommand CmdLineCalibrateL(REQ_AT_LINE_CALIBRATE, cmd_line_calibrate_cb);
 
 	CommandsParser_g.SetDefaultHandler(cmd_unrecognized_cb);
 	CommandsParser_g.AddCommand(&CmdResetL);
 	CommandsParser_g.AddCommand(&CmdModeL);
+	CommandsParser_g.AddCommand(&CmdLineCalibrateL);
 }
 
 /**
@@ -619,6 +621,15 @@ void cmd_mode_cb(SerialCommands* sender)
 	sender->GetSerial()->print(RES_AT_OK);
 }
 
+/**
+ * @brief 
+ * 
+ * @param sender Sender object.
+ */
+void cmd_line_calibrate_cb(SerialCommands* sender)
+{
+	
+}
 
 /** @brief Transform [X, Y] coordinates to [L, R] PWM values.
  *  @param xyData X and Y "joystick" data.

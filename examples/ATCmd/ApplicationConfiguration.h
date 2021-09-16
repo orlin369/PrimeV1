@@ -80,6 +80,12 @@
 #define REQ_AT_RUN "AT+RUN"
 
 /**
+ * @brief 
+ * 
+ */
+#define REQ_AT_LINE_CALIBRATE "AT+LINE+CALIBRATE"
+
+/**
  * @brief Response OK.
  * 
  */
