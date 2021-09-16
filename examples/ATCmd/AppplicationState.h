@@ -38,7 +38,8 @@ SOFTWARE.
 /** @brief Application state description enum. */
 enum AppplicationState : uint8_t
 {
-	WaitForCalibration = 1U, ///< Wait for calibration state.
+	Nothing = 0U, ///< Nothing to do.
+	WaitForCalibration, ///< Wait for calibration state.
 	CalibrateSensors, ///< Calibrate the sensors.
 	WaitForStart, ///< Wait for start.
 	ReadSensors, ///< Read sensors.
