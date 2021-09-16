@@ -34,8 +34,6 @@
 
 #define ENC_SLOTS 20U
 
-#define SECS 60U
-
 #define DEBOUNCE_DELAY 50
 
 #pragma endregion
