@@ -319,4 +319,19 @@ float LineSensorClass::getLinePosition()
 	return m_linePosition;
 }
 
+/**
+ * @brief Get the specified sensor value.
+ * 
+ * @param index Index of the sensor in array.
+ * @return uint16_t Value of the sensor.
+ */
+uint16_t LineSensorClass::getSensor(uint8_t index)
+{
+	return m_curSensorsValues[index];
+}
+
+/**
+ * @brief Line sensor instance.
+ * 
+ */
 LineSensorClass LineSensor;

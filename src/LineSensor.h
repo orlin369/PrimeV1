@@ -177,6 +177,14 @@ public:
 	 */
 	SensorState thresholdSensor(int sensorIndex);
 
+	/**
+	 * @brief Get the specified sensor value.
+	 * 
+	 * @param index Index of the sensor in array.
+	 * @return uint16_t Value of the sensor.
+	 */
+	uint16_t getSensor(uint8_t index);
+
 #pragma endregion
 
 };
