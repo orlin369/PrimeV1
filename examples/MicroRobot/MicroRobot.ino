@@ -167,20 +167,40 @@ void controll_bridge()
 	{
 		if (MotorLeftState_g == HIGH)
 		{
-			LRData_g.L = 128;
+			LRData_g.L += 1;
+
+			if (LRData_g.L > 128)
+			{
+				LRData_g.L = 128;	
+			}
 		}
 		else
 		{
-			LRData_g.L = -128;
+			LRData_g.L -= 1;
+
+			if (LRData_g.L < -128)
+			{
+				LRData_g.L = -128;	
+			}
 		}
 
 		if (MotorRightState_g == HIGH)
 		{
-			LRData_g.R = 128;
+			LRData_g.R += 1;
+
+			if (LRData_g.R > 128)
+			{
+				LRData_g.R = 128;	
+			}
 		}
 		else
 		{
-			LRData_g.R = -128;
+			LRData_g.R -= 1;
+
+			if (LRData_g.R < -128)
+			{
+				LRData_g.R = -128;	
+			}
 		}
 	}
 	else
