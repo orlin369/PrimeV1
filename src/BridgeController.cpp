@@ -312,4 +312,68 @@ unsigned int BridgeControllerClass::MM2Steps(float mm)
 	return result;
 }
 
+/**
+ * @brief Get the Left Encoder value.
+ * 
+ * @return unsigned int Value
+ */
+unsigned int BridgeControllerClass::GetLeftEncoder()
+{
+	return this->m_cntLeft;
+}
+
+/**
+ * @brief Get the Right Encoder value.
+ * 
+ * @return unsigned int Value
+ */
+unsigned int BridgeControllerClass::GetRightEncoder()
+{
+	return this->m_cntRight;
+}
+
+/**
+ * @brief Set the Left Encoder value.
+ * 
+ * @param value Value
+ */
+void BridgeControllerClass::SetLeftEncoder(unsigned int value)
+{
+	this->m_cntLeft = value;
+}
+
+/**
+ * @brief Set the Right Encoder value.
+ * 
+ * @param value Value
+ */
+void BridgeControllerClass::SetRightEncoder(unsigned int value)
+{
+	this->m_cntRight = value;
+}
+
+/**
+ * @brief Get the Left Motor PWM value.
+ * 
+ * @return int16_t Value
+ */
+int16_t BridgeControllerClass::GetLeftMotor()
+{
+	return this->m_leftPWM;
+}
+
+/**
+ * @brief Get the Right Motor PWM value.
+ * 
+ * @return int16_t Value
+ */
+int16_t BridgeControllerClass::GetRightMotor()
+{
+	return this->m_rightPWM;
+}
+
+/**
+ * @brief Bridge controller instance.
+ * 
+ */
 BridgeControllerClass BridgeController;

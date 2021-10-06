@@ -72,6 +72,18 @@ class BridgeControllerClass
 	 /** @brief Right encoder counter enable flag. */
 	 volatile unsigned int m_enbCntRight;
 
+	/**
+	 * @brief Left motor PWM value.
+	 * 
+	 */
+	int16_t m_leftPWM;
+
+	/**
+	 * @brief Right motor PWM value.
+	 * 
+	 */
+	int16_t m_rightPWM;
+
 #pragma endregion
 
 #pragma region Methods
@@ -127,6 +139,47 @@ class BridgeControllerClass
 
 	void MoveSpeed(int16_t left, int16_t right);
 
+	/**
+	 * @brief Get the Left Encoder value.
+	 * 
+	 * @return unsigned int Value
+	 */
+	unsigned int GetLeftEncoder();
+
+	/**
+	 * @brief Get the Right Encoder value.
+	 * 
+	 * @return unsigned int Value
+	 */
+	unsigned int GetRightEncoder();
+
+	/**
+	 * @brief Set the Left Encoder value.
+	 * 
+	 * @param value Value
+	 */
+	void SetLeftEncoder(unsigned int value);
+
+	/**
+	 * @brief Set the Right Encoder value.
+	 * 
+	 * @param value Value
+	 */
+	void SetRightEncoder(unsigned int value);
+
+	/**
+	 * @brief Get the Left Motor PWM value.
+	 * 
+	 * @return int16_t Value
+	 */
+	int16_t GetLeftMotor();
+
+	/**
+	 * @brief Get the Right Motor PWM value.
+	 * 
+	 * @return int16_t Value
+	 */
+	int16_t GetRightMotor();
 
 #pragma endregion
 
