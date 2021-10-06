@@ -74,22 +74,55 @@
 #define REQ_AT_MODE "AT+MODE"
 
 /**
- * @brief Run the robot.
- * 
- */
-#define REQ_AT_RUN "AT+RUN"
-
-/**
  * @brief 
  * 
  */
 #define REQ_AT_LINE_CALIBRATE "AT+LINE+CALIBRATE"
 
 /**
+ * @brief 
+ * 
+ */
+#define REQ_AT_LINE "AT+LINE"
+
+/**
+ * @brief 
+ * 
+ */
+#define REQ_AT_LINE_POS "AT+LINE+POS"
+
+/**
+ * @brief 
+ * 
+ */
+#define REQ_AT_US "AT+US"
+
+/**
+ * @brief 
+ * 
+ */
+#define REQ_AT_ENC "AT+ENC"
+
+/**
+ * @brief 
+ * 
+ */
+#define REQ_AT_MOTO "AT+MOTO"
+
+#define REQ_AT_MOTO "AT+LED+MODE"
+
+#define REQ_AT_MOTO "AT+LED"
+
+
+/**
  * @brief Response OK.
  * 
  */
 #define RES_AT_OK "OK\r\n"
+
+#define RES_AT_ERR1 "Missing Encoder parameter value \r\n"
+
+#define RES_AT_ERR2 "Missing Motor parameter value \r\n"
 
 #pragma endregion
 
