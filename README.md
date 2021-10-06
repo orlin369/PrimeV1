@@ -22,8 +22,6 @@ The system provides modular robotics hardware that can be separated on a modular
 |Reset the robot | AT+RESET | OK | Will turnoff all actuators. Reset all settings to default. Clear all previous presets.|
 |Mode of the robot. |AT+MODE|OK|Returns the robot mode.|
 |Preset the robot in specified mode.|AT+MODE <0 to N>|OK|Will preset the robot in specified mode.|
-|Run the robot in following mode.|AT+RUN|OK|Will run the robot in the following mode.|
-|Stop the robot.|AT+STOP|OK|Stop the robot if it is running in the some mode.|
 
 # Sensors
 
@@ -37,13 +35,14 @@ The system provides modular robotics hardware that can be separated on a modular
 ## Ultra Sonic
 | Command | Syntax | Response | Result |
 |---------|:-------|:---------|:-------|
-|Get ultra-sonic distance.|AT+GET+US <0 to 180>|<0 to 2000>|Distance to object in mm with specified angle of reading in deg.|
-
+|Get ultra-sonic distance.|AT+US|<0 to 180> <0 to 2000>|Distance to object in mm in full range of degreases.|
+|Get ultra-sonic distance.|AT+US <0 to 180>|<0 to 2000>|Distance to object in mm with specified angle of reading in deg.|
 
 ## Encoders
 | Command | Syntax | Response | Result |
 |---------|:-------|:---------|:-------|
-|Get encoders count since last robot turn on.|AT+GET+ENCODERS|<-n to N>,<-n to N>|Count of the encoders.|
+|Get encoders count since last robot turn on.|AT+ENCODERS|<-n to n> <-n to n>|Count of the encoders.|
+|Set encoders count.|AT+ENCODERS <-n to n> <-n to n>|OK|Set the values of the encoders.|
 
 # Actuators
 
@@ -65,8 +64,8 @@ The system provides modular robotics hardware that can be separated on a modular
 ## LED
 | Command | Syntax | Response | Result |
 |---------|:-------|:---------|:-------|
-|Set the LED mode.|AT+SET+LED+MODE <0 to N>|OK|Set the led mode.|
-|Set the LED state.|AT+SET+LED <0/1>|OK|Turn ON or OFF the LED|
+|Set the LED mode.|AT+LED+MODE <0 to N>|OK|Set the led mode.|
+|Set the LED state.|AT+LED <0/1>|OK|Turn ON or OFF the LED|
 
 ## Events
 | Command | Syntax | Response | Result |
