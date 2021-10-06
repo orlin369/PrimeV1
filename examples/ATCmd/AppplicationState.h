@@ -39,11 +39,15 @@ SOFTWARE.
 enum AppplicationState : uint8_t
 {
 	Nothing = 0U, ///< Nothing to do.
-	WaitForCalibration, ///< Wait for calibration state.
-	CalibrateSensors, ///< Calibrate the sensors.
-	WaitForStart, ///< Wait for start.
-	ReadSensors, ///< Read sensors.
-	TakeAction, ///< Take robot actions.
+	CalibrateLineSensor, ///< Calibrate the line folowing sensors.
+	ReadLine, ///< Read line folowing sensor.
+	ReadLinePos, ///< Read line folowing sensor position.
+	ReadUS, ///< Read ultra sonic distance sensor.
+	ReadUSPos, ///< Read ultra sonic sensor at specified postion.
+	ReadEncoders, ///< Read encoders.
+	WriteEncoders, ///< Preset encoders.
+	ReadMotors, ///< Read motors PWM values.
+	WriteMotors, ///< Write the motors PWM values.
 	SafetyStop, ///< Safety stop the robot.
 };
 
